@@ -8,6 +8,7 @@ import { LogoMark } from '@/components/marketing/SiteHeader';
 import { Button, Field, Input, Tabs } from '@/components/ui';
 import {
   ACCOUNTS_ENABLED,
+  OAUTH_PROVIDERS,
   type OAuthProvider,
   resendConfirmation,
   signInWithMagicLink,
@@ -305,39 +306,47 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <div className="px-6 pt-3 pb-5">
-        <div className="mb-3 flex items-center gap-3 text-[11px] text-[var(--muted)]">
-          <span className="h-px flex-1 bg-[var(--line)]" />
-          or continue with
-          <span className="h-px flex-1 bg-[var(--line)]" />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            onClick={() => oauth('github')}
-            disabled={busy !== null}
-            className="justify-center py-2 text-[13px]"
+      {OAUTH_PROVIDERS.length > 0 && (
+        <div className="px-6 pt-3 pb-5">
+          <div className="mb-3 flex items-center gap-3 text-[11px] text-[var(--muted)]">
+            <span className="h-px flex-1 bg-[var(--line)]" />
+            or continue with
+            <span className="h-px flex-1 bg-[var(--line)]" />
+          </div>
+          <div
+            className={`grid gap-2 ${OAUTH_PROVIDERS.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}
           >
-            {busy === 'github' ? (
-              <LoaderCircle size={14} className="animate-spin" />
-            ) : (
-              <GitHubMark />
+            {OAUTH_PROVIDERS.includes('github') && (
+              <Button
+                onClick={() => oauth('github')}
+                disabled={busy !== null}
+                className="justify-center py-2 text-[13px]"
+              >
+                {busy === 'github' ? (
+                  <LoaderCircle size={14} className="animate-spin" />
+                ) : (
+                  <GitHubMark />
+                )}
+                GitHub
+              </Button>
             )}
-            GitHub
-          </Button>
-          <Button
-            onClick={() => oauth('google')}
-            disabled={busy !== null}
-            className="justify-center py-2 text-[13px]"
-          >
-            {busy === 'google' ? (
-              <LoaderCircle size={14} className="animate-spin" />
-            ) : (
-              <GoogleMark />
+            {OAUTH_PROVIDERS.includes('google') && (
+              <Button
+                onClick={() => oauth('google')}
+                disabled={busy !== null}
+                className="justify-center py-2 text-[13px]"
+              >
+                {busy === 'google' ? (
+                  <LoaderCircle size={14} className="animate-spin" />
+                ) : (
+                  <GoogleMark />
+                )}
+                Google
+              </Button>
             )}
-            Google
-          </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       <ContinueLocally />
     </Card>

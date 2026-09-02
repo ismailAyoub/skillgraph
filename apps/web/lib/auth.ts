@@ -8,7 +8,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { supabaseBrowser } from './supabase/browser';
-import { ACCOUNTS_ENABLED } from './supabase/env';
+import { ACCOUNTS_ENABLED, OAUTH_PROVIDERS } from './supabase/env';
 
 export type OAuthProvider = 'github' | 'google';
 
@@ -18,7 +18,7 @@ export interface AuthResult {
   message?: string;
 }
 
-export { ACCOUNTS_ENABLED };
+export { ACCOUNTS_ENABLED, OAUTH_PROVIDERS };
 
 function siteUrl(): string {
   if (typeof window !== 'undefined') return window.location.origin;

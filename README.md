@@ -194,7 +194,7 @@ Optional. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (se
 
 Schema: `apps/web/supabase/migrations/0001_skills.sql` (one `skills` table, row-level security so owners read and write their rows and anyone can read a row marked public; `set_skill_public()` allocates the share slug). Sessions are cookie-based through `@supabase/ssr`; `apps/web/proxy.ts` refreshes them and `app/auth/callback` completes OAuth and magic-link sign-ins.
 
-One-time Supabase dashboard setup (not scriptable through the MCP): Authentication → URL Configuration → Site URL = your production origin, and add `<origin>/auth/callback` for production, previews and `http://localhost:3210` to the redirect allowlist. Enable the GitHub and Google providers with their client ids if you want those buttons to work; email + password works out of the box (turn off "Confirm email" if you do not want the confirmation step).
+One-time Supabase dashboard setup (not scriptable through the MCP): Authentication → URL Configuration → Site URL = your production origin, and add `<origin>/auth/callback` for production, previews and `http://localhost:3210` to the redirect allowlist. GitHub and Google buttons appear only when `NEXT_PUBLIC_AUTH_PROVIDERS=github,google` is set; enable each provider in Supabase with its client id and secret first. Email + password works out of the box (turn off "Confirm email" to skip the confirmation step).
 
 ## Development notes
 
