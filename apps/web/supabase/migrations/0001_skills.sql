@@ -51,14 +51,14 @@ create policy "owners delete own skills" on public.skills
 
 -- Share toggle: allocates a stable slug the first time a skill goes public.
 create or replace function public.set_skill_public(skill_id uuid, make_public boolean)
-returns text language plpgsql security invoker set search_path = public as $$
+returns text language plpgsql security invoker set search_path = public, extensions as $$
 declare
   slug text;
 begin
   if make_public then
     update public.skills
       set is_public = true,
-          share_slug = coalesce(share_slug, encode(gen_random_bytes(6), 'hex'))
+          share_slug = coalesce(share_slug, encode(extensions.gen_random_bytes(6), 'hex'))
       where id = skill_id and owner = (select auth.uid())
       returning share_slug into slug;
     return slug;

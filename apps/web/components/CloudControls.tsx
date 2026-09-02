@@ -19,6 +19,7 @@ export function CloudControls() {
   const [share, setShare] = useState<{ isPublic: boolean; slug: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   useEffect(() => {
     setShare(null);
@@ -51,6 +52,7 @@ export function CloudControls() {
   const toggleShare = async () => {
     if (!cloudId) return;
     setBusy(true);
+    setShareError(null);
     try {
       const next = !(share?.isPublic ?? false);
       const slug = await setCloudSkillPublic(cloudId, next);
@@ -60,6 +62,8 @@ export function CloudControls() {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }
+    } catch (e) {
+      setShareError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -99,7 +103,9 @@ export function CloudControls() {
           </Button>
         </>
       )}
-      {cloudMessage && <span className="text-[11px] text-red-700">{cloudMessage}</span>}
+      {(cloudMessage || shareError) && (
+        <span className="text-[11px] text-red-700">{cloudMessage ?? shareError}</span>
+      )}
     </>
   );
 }
