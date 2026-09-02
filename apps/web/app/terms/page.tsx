@@ -7,8 +7,8 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of service" updated="September 2, 2026">
       <p>
-        These terms cover the hosted SkillGraph app. The SkillGraph software itself is open source
-        under the MIT license; these terms do not restrict it.
+        These terms cover the hosted SkillGraph app at skillgraph-olive.vercel.app, currently
+        offered free of charge as an early-access preview.
       </p>
       <h2>The service</h2>
       <p>

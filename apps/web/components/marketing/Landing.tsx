@@ -88,11 +88,11 @@ const FEATURES: { icon: ReactNode; title: string; body: string }[] = [
 ];
 
 const CLI_LINES = [
-  'pnpm dlx skillgraph import ~/.claude/skills/my-skill   # graph next to SKILL.md, plus a fidelity report',
-  'pnpm dlx skillgraph lint ~/.claude/skills/my-skill',
-  'pnpm dlx skillgraph compile ~/.claude/skills/my-skill  # re-emits SKILL.md byte for byte',
-  'pnpm dlx skillgraph eval triggers ~/.claude/skills/my-skill --runs 3',
-  'pnpm dlx skillgraph export ~/.claude/skills/my-skill --format plugin --out-dir ./my-plugin',
+  'skillgraph import ~/.claude/skills/my-skill   # graph next to SKILL.md, plus a fidelity report',
+  'skillgraph lint ~/.claude/skills/my-skill',
+  'skillgraph compile ~/.claude/skills/my-skill  # re-emits SKILL.md byte for byte',
+  'skillgraph eval triggers ~/.claude/skills/my-skill --runs 3',
+  'skillgraph export ~/.claude/skills/my-skill --format plugin --out-dir ./my-plugin',
 ];
 
 function Section({
@@ -163,7 +163,8 @@ export function Landing() {
                 </a>
               </div>
               <p className="mk-mono mt-5 text-[11.5px] text-[var(--muted)]">
-                MIT · runs in your browser · Claude Code, Claude.ai, Codex, Cursor, Gemini CLI
+                Free while in preview · runs in your browser · Claude Code, Claude.ai, Codex,
+                Cursor, Gemini CLI
               </p>
             </div>
           </div>
@@ -285,7 +286,7 @@ export function Landing() {
             <LogoMark size={16} />
             <span className="font-medium text-[var(--ink)]">SkillGraph</span>
             <span aria-hidden="true">·</span>
-            <span>MIT license</span>
+            <span>Early access</span>
           </div>
           <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
             <a href="/privacy" className="transition hover:text-[var(--ink)]">
