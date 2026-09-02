@@ -94,7 +94,7 @@ Every other text file in the folder survives byte for byte, and compiling the de
 | M0 Scaffold, M1 Core + CLI | Done. Byte-for-byte round trip over the fixtures and 31 local skills. |
 | M2 Editor MVP | Done. React Flow canvas, inspector, live preview, lint panel, undo/redo, local bridge, zip export, Vercel deploy. |
 | M3 Import and sync | Done. Fidelity report, drift protection with a "re-import vs overwrite" modal, MCP server plus the `skillgraph-authoring` meta-skill. |
-| M4 AI assist | Done. `@skillgraph/ai`: critique, description composer, trigger-query generator, node copilot, interview to graph, transcript to skill, docs to references, import fallback. Web AI tab and `skillgraph ai`. BYO Anthropic key; every AI result is a proposal until you apply it. |
+| M4 AI assist | Done. `@skillgraph/ai`: critique, description composer, trigger-query generator, node copilot, interview to graph, transcript to skill, docs to references, import fallback. Web AI tab and `skillgraph ai`, powered by an Anthropic API key or, with no key, your local Claude Code login through `skillgraph dev`; every AI result is a proposal until you apply it. |
 | M5 Evals | Done. `skillgraph eval`: trigger evals and description optimizer via `claude -p`, task evals with and without the skill, grader, skill-creator compatible `benchmark.json`, execution traces and a coverage heatmap on the canvas. |
 | M6 Distribution | Done except hosted accounts. Export as zip, `.skill`, Claude Code plugin (with marketplace manifest) or `skills/` repo; `skillgraph publish` uploads to the Anthropic Skills API; template gallery with nine genres. Hosted accounts with cloud save and share links are not built; the app stays local-first. Codex, Cursor and Gemini consume the `universal` profile, so they have no separate profile. |
 
@@ -117,9 +117,14 @@ pnpm --filter skillgraph dev dev --dir ~/.claude/skills --port 4321
 
 The bridge is a small HTTP API (`/api/health`, `/api/skills`, `/api/skills/:name` GET and PUT) that only listens on 127.0.0.1.
 
-### AI tab (bring your own key)
+### AI tab
 
-Open Settings in the editor header, paste an Anthropic API key and pick a model. The key stays in this browser's localStorage and is sent only to this app's `/api/ai/*` route handlers, one request at a time; the server never stores or logs it. The AI tab in the right-hand panel then offers:
+Two ways to power it, chosen in Settings (gear icon):
+
+- **API key.** Paste an Anthropic API key and pick a model. The key stays in this browser's localStorage and is sent only to this app's `/api/ai/*` route handlers, one request at a time; the server never stores or logs it.
+- **Your Claude Code login, no key.** Run `skillgraph dev` on your machine. The bridge then also serves `/api/ai/*` by running the local `claude -p` (tools off, one turn, JSON answer validated against the same schemas), so a Claude subscription is enough. The hosted app detects the bridge and uses it automatically when no key is set; "Auto" prefers the key when both exist.
+
+The AI tab in the right-hand panel offers:
 
 - **Critique**: findings pinned to nodes, each with an optional patch you can apply one by one or all at once.
 - **Describe**: description candidates with rationale plus 20 trigger queries (should-trigger and near-miss negatives) ready for `skillgraph eval triggers`.
@@ -135,7 +140,7 @@ After `skillgraph eval run --trace` has written traces under `evals/traces/`, op
 
 ## AI assist from the CLI
 
-`skillgraph ai` needs `ANTHROPIC_API_KEY` (or `--key`). Every subcommand prints its proposal; `--apply` writes it to `SKILL.graph.json` and recompiles.
+Every subcommand prints its proposal; `--apply` writes it to `SKILL.graph.json` and recompiles. Backend: `--backend api` uses `ANTHROPIC_API_KEY` (or `--key`); `--backend claude` runs the local Claude Code CLI with your subscription login; the default `auto` picks the API when a key is present, else `claude`. The same flag exists on `skillgraph eval`.
 
 ```text
 skillgraph ai critique <dir> [--json] [--apply]

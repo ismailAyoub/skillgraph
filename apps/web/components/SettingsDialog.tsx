@@ -3,21 +3,34 @@
 import { Settings as SettingsIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Field, Input, Modal, Select } from '@/components/ui';
-import { AI_MODELS, setAiModel, setAnthropicKey } from '@/lib/settings';
+import {
+  AI_BACKENDS,
+  AI_MODELS,
+  type AiBackend,
+  setAiBackend,
+  setAiModel,
+  setAnthropicKey,
+} from '@/lib/settings';
 import { useAiSettings } from '@/lib/useSettings';
 
 export function SettingsButton() {
   const [open, setOpen] = useState(false);
-  const { key } = useAiSettings();
+  const { effective } = useAiSettings();
   return (
     <>
       <Button
         onClick={() => setOpen(true)}
-        title={key ? 'Settings (API key set)' : 'Settings: set your Anthropic API key'}
+        title={
+          effective === 'api'
+            ? 'Settings (AI via API key)'
+            : effective === 'bridge'
+              ? 'Settings (AI via local Claude Code login)'
+              : 'Settings: set an API key or run skillgraph dev'
+        }
         aria-label="Settings"
       >
         <SettingsIcon size={14} />
-        {!key && <span className="text-[var(--muted)]">Set API key</span>}
+        {!effective && <span className="text-[var(--muted)]">Set up AI</span>}
       </Button>
       {open && <SettingsDialog onClose={() => setOpen(false)} />}
     </>
@@ -25,14 +38,21 @@ export function SettingsButton() {
 }
 
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
-  const { key, model } = useAiSettings();
+  const { key, model, backend, bridgeAi } = useAiSettings();
   const [draftKey, setDraftKey] = useState(key);
   const [draftModel, setDraftModel] = useState(model);
+  const [draftBackend, setDraftBackend] = useState<AiBackend>(backend);
 
   const save = () => {
     setAnthropicKey(draftKey);
     setAiModel(draftModel);
+    setAiBackend(draftBackend);
     onClose();
+  };
+  const backendLabel: Record<AiBackend, string> = {
+    auto: 'Auto (API key if set, else local bridge)',
+    api: 'Anthropic API key',
+    bridge: 'Local Claude Code login (skillgraph dev)',
   };
 
   return (
@@ -58,6 +78,19 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           data-testid="settings-api-key"
         />
       </Field>
+      <Field label="AI backend" hint={bridgeAi ? 'bridge online' : 'bridge offline'}>
+        <Select
+          value={draftBackend}
+          onChange={(e) => setDraftBackend(e.target.value as AiBackend)}
+          data-testid="settings-backend"
+        >
+          {AI_BACKENDS.map((b) => (
+            <option key={b} value={b}>
+              {backendLabel[b]}
+            </option>
+          ))}
+        </Select>
+      </Field>
       <Field label="Model">
         <Select value={draftModel} onChange={(e) => setDraftModel(e.target.value)}>
           {AI_MODELS.map((m) => (
@@ -69,7 +102,9 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       </Field>
       <p className="text-[11px] leading-snug text-[var(--muted)]">
         The key stays in this browser (localStorage) and is sent only to this app&apos;s{' '}
-        <code>/api/ai</code> routes per request, never stored server-side.
+        <code>/api/ai</code> routes per request, never stored server-side. Without a key, run{' '}
+        <code>skillgraph dev</code> on your machine: the AI tab then talks to the local bridge,
+        which runs <code>claude -p</code> with your Claude Code login.
       </p>
     </Modal>
   );

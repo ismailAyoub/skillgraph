@@ -2,6 +2,15 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import {
+  AI_ERROR_STATUS,
+  type AiFeatureBody,
+  createAi,
+  dispatchAiFeature,
+  isAiError,
+  isAiFeature,
+} from '@skillgraph/ai';
+import { createClaudeCliBackend } from '@skillgraph/ai/claude-cli';
 import { compile, contentHash, decompile, migrate, type SkillFile } from '@skillgraph/core';
 import pc from 'picocolors';
 import { aggregateTraceFiles, readTraces } from '../eval/trace';
@@ -78,7 +87,48 @@ export function devCommand(args: { dir?: string; port?: number; host?: string })
         return;
       }
       if (url.pathname === '/api/health')
-        return json(res, 200, { ok: true, dir, version: VERSION });
+        return json(res, 200, { ok: true, dir, version: VERSION, ai: 'claude-cli' });
+
+      // AI features backed by the local Claude Code CLI (or the API when a key header is sent).
+      const ai = url.pathname.match(/^\/api\/ai\/([a-z-]+)$/);
+      if (ai) {
+        if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
+        const feature = ai[1] as string;
+        if (!isAiFeature(feature))
+          return json(res, 404, {
+            ok: false,
+            error: `Unknown AI feature "${feature}"`,
+            code: 'not_found',
+          });
+        const key = (req.headers['x-anthropic-key'] as string | undefined)?.trim();
+        const modelHeader = (req.headers['x-anthropic-model'] as string | undefined)?.trim();
+        const model = modelHeader || undefined;
+        let body: AiFeatureBody;
+        try {
+          body = JSON.parse(await readBody(req)) as AiFeatureBody;
+        } catch {
+          return json(res, 400, {
+            ok: false,
+            error: 'Request body must be JSON',
+            code: 'bad_request',
+          });
+        }
+        try {
+          const aiClient = key
+            ? createAi(model ? { apiKey: key, model } : { apiKey: key })
+            : createAi({ backend: createClaudeCliBackend(model ? { model } : {}) });
+          const result = await dispatchAiFeature(aiClient, feature, body);
+          return json(res, 200, { ok: true, result });
+        } catch (e) {
+          if (isAiError(e))
+            return json(res, AI_ERROR_STATUS[e.code] ?? 500, {
+              ok: false,
+              error: e.message,
+              code: e.code,
+            });
+          return json(res, 502, { ok: false, error: (e as Error).message, code: 'api' });
+        }
+      }
       if (url.pathname === '/api/skills' && req.method === 'GET')
         return json(res, 200, listSkills(dir));
 
@@ -166,6 +216,9 @@ export function devCommand(args: { dir?: string; port?: number; host?: string })
       console.log(pc.bold(`skillgraph dev bridge`));
       console.log(`  folder  ${dir}`);
       console.log(`  api     http://${host}:${port}/api/skills`);
+      console.log(
+        `  ai      http://${host}:${port}/api/ai/<feature> (local claude -p; your login)`,
+      );
       console.log(
         pc.dim('  Open the SkillGraph editor and it will list these skills under "Local skills".'),
       );

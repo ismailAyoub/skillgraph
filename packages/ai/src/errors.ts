@@ -1,4 +1,11 @@
-export type AiErrorCode = 'auth' | 'rate_limit' | 'api' | 'parse' | 'refusal' | 'invalid_patch';
+export type AiErrorCode =
+  | 'auth'
+  | 'rate_limit'
+  | 'api'
+  | 'parse'
+  | 'refusal'
+  | 'invalid_patch'
+  | 'bad_request';
 
 /** Every failure of `@skillgraph/ai` surfaces as an AiError with a stable `code`. */
 export class AiError extends Error {

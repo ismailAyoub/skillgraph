@@ -12,6 +12,14 @@ import { interview } from './features/interview';
 import type { Ai, AiOptions } from './types';
 
 export { DEFAULT_MAX_TOKENS } from './client';
+export {
+  AI_ERROR_STATUS,
+  AI_FEATURES,
+  type AiFeature,
+  type AiFeatureBody,
+  dispatchAiFeature,
+  isAiFeature,
+} from './dispatch';
 export { AiError, type AiErrorCode, isAiError } from './errors';
 export { AUTHORING_GUIDE, describeGraphForPrompt, NODE_VOCABULARY } from './prompt';
 export * from './types';

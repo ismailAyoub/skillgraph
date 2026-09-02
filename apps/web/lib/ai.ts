@@ -10,7 +10,9 @@ import type {
   TriggerQuery,
 } from '@skillgraph/ai';
 import type { CompileResult, Diagnostic, SkillDoc } from '@skillgraph/core';
-import { getAiModel, getAnthropicKey } from './settings';
+import { getBridgeUrl } from './bridge';
+import { getAiBackend, getAiModel, getAnthropicKey } from './settings';
+import { resolveBackend } from './useSettings';
 
 /** Route features; each maps 1:1 to an `Ai` method (see BUILD_CONTRACT "Web route contract"). */
 export interface AiFeatures {
@@ -61,7 +63,14 @@ export class AiClientError extends Error {
   }
 }
 
-export const NO_KEY_HINT = 'Set your API key in Settings (gear icon in the header) to use AI.';
+export const NO_KEY_HINT =
+  'To use AI, set an Anthropic API key in Settings (gear icon), or run `skillgraph dev` locally to use your Claude Code login through the bridge.';
+
+/** Cached result of the last bridge health probe (kept fresh by useAiSettings). */
+let bridgeAiAvailable = false;
+export function setBridgeAiAvailable(v: boolean): void {
+  bridgeAiAvailable = v;
+}
 
 /**
  * Call an AI route. The key and model come from this browser's settings and travel as request
@@ -73,16 +82,20 @@ export async function callAi<F extends AiFeature>(
   signal?: AbortSignal,
 ): Promise<AiFeatures[F]['output']> {
   const key = getAnthropicKey();
-  if (!key) throw new AiClientError(NO_KEY_HINT, 'no_key');
+  const target = resolveBackend(getAiBackend(), key, bridgeAiAvailable);
+  if (!target) throw new AiClientError(NO_KEY_HINT, 'no_key');
+  const url = target === 'api' ? `/api/ai/${feature}` : `${getBridgeUrl()}/api/ai/${feature}`;
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    'x-anthropic-model': getAiModel(),
+  };
+  // The bridge runs `claude -p` with your local login; the key only travels to the hosted route.
+  if (target === 'api') headers['x-anthropic-key'] = key;
   let res: Response;
   try {
-    res = await fetch(`/api/ai/${feature}`, {
+    res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-anthropic-key': key,
-        'x-anthropic-model': getAiModel(),
-      },
+      headers,
       body: JSON.stringify(input),
       signal,
     });

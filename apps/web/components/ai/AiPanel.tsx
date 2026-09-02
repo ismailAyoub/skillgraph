@@ -25,8 +25,8 @@ const MODES: { id: AiMode; label: string }[] = [
 export function AiPanel() {
   const mode = useAiPanel((s) => s.mode);
   const setMode = useAiPanel((s) => s.setMode);
-  const { key } = useAiSettings();
-  const disabled = !key;
+  const { effective } = useAiSettings();
+  const disabled = !effective;
 
   return (
     <div className="flex h-full flex-col">

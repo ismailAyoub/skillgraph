@@ -2,18 +2,27 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { z } from 'zod';
 import { AiError } from './errors';
-import { type AiOptions, DEFAULT_MODEL } from './types';
+import { type AiOptions, DEFAULT_MODEL, type StructuredBackend } from './types';
 
 export const DEFAULT_MAX_TOKENS = 16000;
 
 export interface CallContext {
-  client: Anthropic;
+  /** Anthropic SDK client; absent when a custom `backend` is in use. */
+  client?: Anthropic;
   model: string;
   maxTokens: number;
+  backend?: StructuredBackend;
 }
 
 /** Build the call context. `apiKey` is optional: the SDK falls back to ANTHROPIC_API_KEY. */
 export function createClient(opts: AiOptions = {}): CallContext {
+  if (opts.backend) {
+    return {
+      backend: opts.backend,
+      model: opts.model ?? DEFAULT_MODEL,
+      maxTokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS,
+    };
+  }
   const client =
     opts.client ??
     new Anthropic({
@@ -64,6 +73,14 @@ export async function callStructured<T>(
   system: string,
   userContent: string,
 ): Promise<T> {
+  if (ctx.backend) {
+    try {
+      return await ctx.backend.call(schema, system, userContent);
+    } catch (err) {
+      throw mapError(err);
+    }
+  }
+  if (!ctx.client) throw new AiError('api', 'No AI backend configured');
   let response: Awaited<ReturnType<Anthropic['messages']['parse']>>;
   try {
     response = await ctx.client.messages.parse({

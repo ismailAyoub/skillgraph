@@ -1,9 +1,23 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { CompileResult, Diagnostic, GraphPatchT, SkillDoc } from '@skillgraph/core';
+import type { z } from 'zod';
 
 export const DEFAULT_MODEL = 'claude-opus-5';
 
+/**
+ * Where structured calls go. The default backend is the Anthropic Messages API; `createClaudeCliBackend`
+ * (from `@skillgraph/ai/claude-cli`, Node only) drives the local `claude -p` instead, so a Claude
+ * subscription login works without an API key.
+ */
+export interface StructuredBackend {
+  /** Human-readable name, e.g. `api` or `claude-cli`; surfaced in errors and logs. */
+  readonly name: string;
+  call<T>(schema: z.ZodType<T>, system: string, user: string): Promise<T>;
+}
+
 export interface AiOptions {
+  /** Custom backend; when set, `apiKey`, `baseURL` and `client` are ignored. */
+  backend?: StructuredBackend;
   apiKey?: string;
   model?: string;
   baseURL?: string;

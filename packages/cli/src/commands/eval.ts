@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { AiOptions } from '@skillgraph/ai';
+import { createClaudeCliBackend } from '@skillgraph/ai/claude-cli';
 import { decompile, migrate, type SkillDoc } from '@skillgraph/core';
 import type { Command } from 'commander';
 import pc from 'picocolors';
@@ -20,6 +21,7 @@ import { graphPath, readJson, readSkillDir, writeJson } from '../fs';
 interface CommonArgs {
   key?: string;
   model?: string;
+  backend?: string;
 }
 
 function loadDoc(dir: string): SkillDoc {
@@ -31,9 +33,15 @@ function loadDoc(dir: string): SkillDoc {
 
 function aiOptions(args: CommonArgs): AiOptions {
   const apiKey = args.key ?? process.env.ANTHROPIC_API_KEY;
-  if (!apiKey)
-    throw new Error('no API key: pass --key or set ANTHROPIC_API_KEY (evals call the model)');
-  return { apiKey, ...(args.model ? { model: args.model } : {}) };
+  const backend = args.backend ?? 'auto';
+  if (backend === 'api' || (backend === 'auto' && apiKey)) {
+    if (!apiKey)
+      throw new Error('no API key: pass --key or set ANTHROPIC_API_KEY, or use --backend claude');
+    return { apiKey, ...(args.model ? { model: args.model } : {}) };
+  }
+  if (backend !== 'claude' && backend !== 'auto')
+    throw new Error(`unknown --backend ${backend}; use api, claude or auto`);
+  return { backend: createClaudeCliBackend(args.model ? { model: args.model } : {}) };
 }
 
 function ai(args: CommonArgs): AiPort {
@@ -277,6 +285,7 @@ export function registerEvalCommand(program: Command): void {
     .option('-n, --count <n>', 'how many queries (default 20)', int)
     .option('-o, --out <file>', `output file (default: <dir>/${TRIGGER_QUERIES_FILE})`)
     .option('-k, --key <key>', 'Anthropic API key (default: ANTHROPIC_API_KEY)')
+    .option('-b, --backend <backend>', 'api | claude | auto (claude = local Claude Code login)')
     .option('-m, --model <model>', 'model for the AI calls')
     .option('--json', 'print JSON instead of writing the file')
     .action(async (dir, opts) => process.exit(await queriesCommand({ dir, ...opts })));
@@ -307,6 +316,7 @@ export function registerEvalCommand(program: Command): void {
     .option('-c, --concurrency <n>', 'parallel `claude` processes (default 4)', int)
     .option('--apply', 'write the best description back into SKILL.graph.json and recompile')
     .option('-k, --key <key>', 'Anthropic API key (default: ANTHROPIC_API_KEY)')
+    .option('-b, --backend <backend>', 'api | claude | auto (claude = local Claude Code login)')
     .option('-m, --model <model>', 'model for the AI calls')
     .option('--json', 'machine-readable output')
     .action(async (dir, opts) => process.exit(await optimizeCommand({ dir, ...opts })));
@@ -324,6 +334,7 @@ export function registerEvalCommand(program: Command): void {
     .option('--trace', 'record node traces for the with_skill runs')
     .option('--ai-align', 'use the AI aligner on top of the deterministic trace mapping')
     .option('-k, --key <key>', 'Anthropic API key (default: ANTHROPIC_API_KEY)')
+    .option('-b, --backend <backend>', 'api | claude | auto (claude = local Claude Code login)')
     .option('-m, --model <model>', 'model for the executor and grader')
     .option('--json', 'print benchmark.json')
     .action(async (dir, opts) => process.exit(await runCommand({ dir, ...opts })));

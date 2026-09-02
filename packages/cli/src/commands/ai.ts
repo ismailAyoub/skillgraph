@@ -11,6 +11,7 @@ import {
   type Proposal,
   type TriggerQuery,
 } from '@skillgraph/ai';
+import { createClaudeCliBackend } from '@skillgraph/ai/claude-cli';
 import {
   applyPatch,
   compile,
@@ -39,6 +40,7 @@ const COPILOT_INTENTS: CopilotIntent[] = [
 interface CommonOpts {
   key?: string;
   model?: string;
+  backend?: string;
   json?: boolean;
   apply?: boolean;
 }
@@ -62,11 +64,27 @@ function loadGraph(dirArg: string): LoadedGraph {
 class CliError extends Error {}
 
 function makeAi(opts: CommonOpts): Ai {
-  const apiKey = opts.key ?? process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new CliError('Set ANTHROPIC_API_KEY or pass --key');
-  const options: AiOptions = { apiKey };
-  if (opts.model) options.model = opts.model;
+  const options = resolveAiOptions(opts);
   return createAi(options);
+}
+
+/**
+ * Pick the backend: `--backend api` needs a key; `--backend claude` drives the local Claude Code
+ * CLI (your subscription login); `auto` (default) uses the API when a key is present, else claude.
+ */
+export function resolveAiOptions(opts: CommonOpts): AiOptions {
+  const apiKey = opts.key ?? process.env.ANTHROPIC_API_KEY;
+  const backend = opts.backend ?? 'auto';
+  if (backend === 'api' || (backend === 'auto' && apiKey)) {
+    if (!apiKey)
+      throw new CliError('Set ANTHROPIC_API_KEY or pass --key (or use --backend claude)');
+    const options: AiOptions = { apiKey };
+    if (opts.model) options.model = opts.model;
+    return options;
+  }
+  if (backend !== 'claude' && backend !== 'auto')
+    throw new CliError(`unknown --backend ${backend}; use api, claude or auto`);
+  return { backend: createClaudeCliBackend(opts.model ? { model: opts.model } : {}) };
 }
 
 /** Apply a patch to the graph, save it and recompile the skill folder (mirrors `compile`). */
@@ -369,7 +387,10 @@ async function run(fn: () => Promise<number>): Promise<number> {
     return await fn();
   } catch (err) {
     if (isAiError(err)) {
-      const hint = err.code === 'auth' ? 'Set ANTHROPIC_API_KEY or pass --key' : err.message;
+      const hint =
+        err.code === 'auth'
+          ? `${err.message} (API: set ANTHROPIC_API_KEY or --key; local: run \`claude\` to log in)`
+          : err.message;
       console.error(pc.red(`${err.code}: ${hint}`));
       return 1;
     }
@@ -394,6 +415,10 @@ export function registerAiCommand(program: Command): void {
     cmd
       .option('-k, --key <key>', 'Anthropic API key (default: $ANTHROPIC_API_KEY)')
       .option('-m, --model <model>', 'model id (default: claude-opus-5)')
+      .option(
+        '-b, --backend <backend>',
+        'api | claude | auto: claude runs the local Claude Code CLI with your login (default: auto)',
+      )
       .option('--json', 'machine-readable output');
     return cmd;
   };
