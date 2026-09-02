@@ -7,7 +7,8 @@ test('create a skill from a template, edit it, and see the compiled preview', as
   await page.goto('/app');
   await page.getByLabel(/name/i).first().fill('smoke-skill');
   await page.getByRole('button', { name: 'Create' }).click();
-  await expect(page).toHaveURL(/\/edit\//);
+  // The first hit compiles the route on a cold dev server (slow in CI).
+  await expect(page).toHaveURL(/\/edit\//, { timeout: 60_000 });
   await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
   const preview = page.locator('.prose-preview');
   await expect(preview).toContainText('How It Works');
@@ -43,7 +44,8 @@ test('create a skill from a template, edit it, and see the compiled preview', as
 test('import a SKILL.md and compile it back', async ({ page }) => {
   await page.goto('/app');
   await page.locator('input[type=file][accept]').setInputFiles(FIXTURE);
-  await expect(page).toHaveURL(/\/edit\//);
+  // The first hit compiles the route on a cold dev server (slow in CI).
+  await expect(page).toHaveURL(/\/edit\//, { timeout: 60_000 });
   await expect(page.locator('header')).toContainText('web-design-guidelines');
   await page.getByRole('button', { name: 'SKILL.md' }).click();
   await expect(page.locator('pre')).toContainText('name: web-design-guidelines');
@@ -54,7 +56,8 @@ async function newSkill(page: import('@playwright/test').Page, name: string) {
   await page.goto('/app');
   await page.getByLabel(/name/i).first().fill(name);
   await page.getByRole('button', { name: 'Create' }).click();
-  await expect(page).toHaveURL(/\/edit\//);
+  // The first hit compiles the route on a cold dev server (slow in CI).
+  await expect(page).toHaveURL(/\/edit\//, { timeout: 60_000 });
 }
 
 test('the AI tab tells you to set an API key when none is set', async ({ page }) => {
