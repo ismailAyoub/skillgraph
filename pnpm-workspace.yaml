@@ -1,0 +1,13 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+allowBuilds:
+  esbuild: true
+  "@biomejs/biome": true
+  turbo: true
+  sharp: true
+minimumReleaseAgeExclude:
+  - '@types/node@26.4.1'
+  - '@xyflow/react@12.11.6'
+  - '@xyflow/system@0.0.82'
+  - lucide-react@1.39.0

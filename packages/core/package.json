@@ -1,0 +1,43 @@
+{
+  "name": "@skillgraph/core",
+  "version": "0.1.0",
+  "description": "Graph schema, compiler, decompiler and linter for Agent Skills (SKILL.md).",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsdown src/index.ts --format esm --out-dir dist --dts"
+  },
+  "dependencies": {
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-to-markdown": "^2.1.2",
+    "nanoid": "^6.0.1",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
+    "yaml": "^2.9.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^26.4.1",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.11",
+    "tsdown": "^0.22.14"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "skillgraph",
+  "version": "0.1.0",
+  "description": "CLI for SkillGraph: compile, lint, import and export Agent Skills drawn as graphs.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "skillgraph": "./bin/skillgraph.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --out-dir dist --platform node",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@skillgraph/core": "workspace:*",
+    "commander": "^15.0.0",
+    "fflate": "^0.8.3",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "tsdown": "^0.22.14",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.11"
+  }
+}

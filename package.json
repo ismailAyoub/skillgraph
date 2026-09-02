@@ -1,0 +1,22 @@
+{
+  "name": "skillgraph-monorepo",
+  "private": true,
+  "packageManager": "pnpm@11.17.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "turbo run typecheck",
+    "dev": "turbo run dev",
+    "golden:update": "pnpm --filter @skillgraph/core test -- -u"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.11",
+    "turbo": "^2.10.12",
+    "typescript": "^5.9.0"
+  }
+}
