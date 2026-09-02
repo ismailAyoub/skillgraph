@@ -1,6 +1,17 @@
 import type { SkillFile } from '@skillgraph/core';
 
 export const DEFAULT_BRIDGE_URL = 'http://127.0.0.1:4321';
+
+/**
+ * How to start the local bridge. The CLI is not on npm yet, so the bridge runs from a checkout of
+ * the repo; collapse this to `npx skillgraph dev` once it is published.
+ */
+export const BRIDGE_REPO_URL = 'https://github.com/ismailAyoub/skillgraph';
+export const BRIDGE_START_COMMANDS = [
+  'git clone https://github.com/ismailAyoub/skillgraph.git && cd skillgraph',
+  'pnpm install',
+  'pnpm --filter skillgraph dev dev',
+] as const;
 const KEY = 'skillgraph:bridgeUrl';
 
 export interface BridgeSkill {

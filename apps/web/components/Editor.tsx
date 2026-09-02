@@ -1,6 +1,15 @@
 'use client';
 
-import { ArrowLeft, Copy, Flame, HardDrive, LayoutGrid, Redo2, Undo2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Copy,
+  Flame,
+  HardDrive,
+  LayoutGrid,
+  MessageSquareText,
+  Redo2,
+  Undo2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { CloudControls } from '@/components/CloudControls';
@@ -12,7 +21,10 @@ import { Palette } from '@/components/Palette';
 import { Preview } from '@/components/preview/Preview';
 import { SettingsButton } from '@/components/SettingsDialog';
 import { Button, Pill, Select } from '@/components/ui';
+import { useAiPanel } from '@/lib/aiStore';
+import { takeKickoff } from '@/lib/kickoff';
 import { useEditor } from '@/lib/store';
+import { useUi } from '@/lib/uiStore';
 
 export function Editor({ id }: { id: string }) {
   const load = useEditor((s) => s.load);
@@ -37,6 +49,8 @@ export function Editor({ id }: { id: string }) {
   const showHeatmap = useEditor((s) => s.showHeatmap);
   const setShowHeatmap = useEditor((s) => s.setShowHeatmap);
   const loadHeatmap = useEditor((s) => s.loadHeatmap);
+  const previewTab = useUi((s) => s.previewTab);
+  const setPreviewTab = useUi((s) => s.setPreviewTab);
   const [drifted, setDrifted] = useState<string[] | null>(null);
 
   const onSaveToDisk = async () => {
@@ -57,6 +71,23 @@ export function Editor({ id }: { id: string }) {
 
   useEffect(() => {
     void load(id);
+    // AI proposals belong to one skill; never carry them over to the next one. Guarded by the
+    // skill id so a double-invoked effect (React strict mode) cannot wipe a queued kickoff.
+    const ai = useAiPanel.getState();
+    const kickoff = takeKickoff(id);
+    if (kickoff) {
+      // Arriving from the dashboard chat: continue that conversation in the AI panel.
+      ai.reset();
+      ai.set('forSkill', id);
+      ai.set('interviewTurns', kickoff.turns);
+      ai.set('interviewStep', kickoff.step);
+      ai.setMode('interview');
+      useUi.getState().setPreviewTab('ai');
+    } else if (ai.forSkill !== id) {
+      ai.reset();
+      ai.set('forSkill', id);
+      useUi.getState().setPreviewTab('rendered');
+    }
     // Debug/test hook: lets e2e tests and the console drive the store.
     (window as unknown as { __skillgraph?: typeof useEditor }).__skillgraph = useEditor;
   }, [id, load]);
@@ -150,6 +181,18 @@ export function Editor({ id }: { id: string }) {
           }
         >
           <Flame size={14} /> Heatmap
+        </Button>
+        <Button
+          onClick={() => {
+            useAiPanel.getState().setMode('interview');
+            setPreviewTab('ai');
+          }}
+          aria-pressed={previewTab === 'ai'}
+          aria-label="Open AI chat"
+          className={previewTab === 'ai' ? 'border-[var(--accent)] text-[var(--accent)]' : ''}
+          title="Chat with Claude about this skill (opens the AI panel)"
+        >
+          <MessageSquareText size={14} /> Chat
         </Button>
         <CloudControls />
         <SettingsButton />

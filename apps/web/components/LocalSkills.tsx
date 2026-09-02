@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Input, Pill } from '@/components/ui';
 import {
+  BRIDGE_START_COMMANDS,
   type BridgeSkill,
   bridgeHealth,
   bridgeList,
@@ -80,11 +81,16 @@ export function LocalSkills() {
         </div>
       </div>
       {!health && (
-        <p className="text-[11px] text-[var(--muted)]">
-          Edit the skills in <code>~/.claude/skills</code> directly: run{' '}
-          <code>npx skillgraph dev</code> in a terminal, then refresh. Saves write SKILL.md and the
-          graph back to the folder, with drift protection.
-        </p>
+        <div className="space-y-1.5 text-[11px] text-[var(--muted)]">
+          <p>
+            Edit the skills in <code>~/.claude/skills</code> directly, and let the AI use your
+            Claude subscription. Run the bridge in a terminal, then refresh:
+          </p>
+          <pre className="overflow-x-auto rounded border border-[var(--line)] bg-neutral-50 px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-[var(--ink)]">
+            {BRIDGE_START_COMMANDS.join('\n')}
+          </pre>
+          <p>Saves write SKILL.md and the graph back to the folder, with drift protection.</p>
+        </div>
       )}
       {error && <p className="text-[11px] text-red-700">{error}</p>}
       {health && skills.length === 0 && (

@@ -218,6 +218,10 @@ export function LoginForm() {
             ? 'No password. We send a one-time link to your inbox.'
             : 'Sync skills across devices and share them by link.'}
         </p>
+        <p className="mt-2 text-[12px] leading-[1.5] text-[var(--muted)]">
+          This is your SkillGraph account, not a Claude account. To let the AI use your Claude
+          subscription or an API key, open &ldquo;Connect AI&rdquo; inside the editor.
+        </p>
       </div>
 
       <div data-testid="login-tabs">

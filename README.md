@@ -117,9 +117,9 @@ pnpm --filter skillgraph dev dev --dir ~/.claude/skills --port 4321
 
 The bridge is a small HTTP API (`/api/health`, `/api/skills`, `/api/skills/:name` GET and PUT) that only listens on 127.0.0.1.
 
-### AI tab
+### AI
 
-Two ways to power it, chosen in Settings (gear icon):
+The dashboard opens with "Build a skill by chatting": describe the skill in a sentence and the editor opens on the chat, which asks one question at a time and draws the graph as you answer. Inside the editor the header "Chat" button opens the same panel, and "Connect AI" explains how the editor reaches Claude. Signing in to SkillGraph only stores skills; it is not a Claude login. Two ways to power the AI, chosen in "Connect AI":
 
 - **API key.** Paste an Anthropic API key and pick a model. The key stays in this browser's localStorage and is sent only to this app's `/api/ai/*` route handlers, one request at a time; the server never stores or logs it.
 - **Your Claude Code login, no key.** Run `skillgraph dev` on your machine. The bridge then also serves `/api/ai/*` by running the local `claude -p` (tools off, one turn, JSON answer validated against the same schemas), so a Claude subscription is enough. The hosted app detects the bridge and uses it automatically when no key is set; "Auto" prefers the key when both exist.
@@ -129,7 +129,7 @@ The AI tab in the right-hand panel offers:
 - **Critique**: findings pinned to nodes, each with an optional patch you can apply one by one or all at once.
 - **Describe**: description candidates with rationale plus 20 trigger queries (should-trigger and near-miss negatives) ready for `skillgraph eval triggers`.
 - **Copilot**: rewrite the selected node (imperative voice, add a why, split steps, draft a reference or script, tighten, or a custom instruction).
-- **Interview**: one question at a time in skill-creator's order (what, when, output format, tests); each answer becomes a patch you can undo.
+- **Chat** (interview): one question at a time in skill-creator's order (what, when, output format, tests); each answer becomes a patch you can undo.
 - **Import**: paste a Claude Code transcript to extract a skill, or recover `raw_markdown` nodes left over from an import.
 
 Every AI result is a `GraphPatch` proposal validated against the graph before you see it; applying it goes through the normal undo history. Nothing runs scripts or `!` commands.

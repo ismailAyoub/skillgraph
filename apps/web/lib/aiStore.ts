@@ -14,6 +14,8 @@ export type AiMode = 'critique' | 'describe' | 'copilot' | 'interview' | 'import
 
 export interface AiPanelState {
   mode: AiMode;
+  /** Skill the current proposals belong to; the editor resets the panel when it changes. */
+  forSkill: string | null;
   /** Findings whose id the user dismissed; keyed by `${rule}:${nodeId}:${message}`. */
   dismissed: string[];
   critique: CritiqueResult | null;
@@ -56,7 +58,8 @@ const EMPTY = {
  * keeps them. Nothing here is applied to the graph; Apply goes through `useEditor.dispatch`.
  */
 export const useAiPanel = create<AiPanelState>((set) => ({
-  mode: 'critique',
+  mode: 'interview',
+  forSkill: null,
   ...EMPTY,
   setMode: (mode) => set({ mode }),
   set: (key, value) => set({ [key]: value } as Partial<AiPanelState>),

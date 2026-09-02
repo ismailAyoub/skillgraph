@@ -64,7 +64,7 @@ export class AiClientError extends Error {
 }
 
 export const NO_KEY_HINT =
-  'To use AI, set an Anthropic API key in Settings (gear icon), or run `skillgraph dev` locally to use your Claude Code login through the bridge.';
+  'AI is not connected yet. Open "Connect AI" to use your Claude subscription (through the local bridge) or an Anthropic API key.';
 
 /** Cached result of the last bridge health probe (kept fresh by useAiSettings). */
 let bridgeAiAvailable = false;
@@ -100,7 +100,13 @@ export async function callAi<F extends AiFeature>(
       signal,
     });
   } catch (e) {
-    throw new AiClientError((e as Error).message || 'Network error', 'network');
+    const why = (e as Error).message || 'Network error';
+    throw new AiClientError(
+      target === 'bridge'
+        ? `Could not reach the local bridge at ${getBridgeUrl()} (${why}). Is \`skillgraph dev\` still running?`
+        : why,
+      'network',
+    );
   }
   let body: { ok: boolean; result?: unknown; error?: string; code?: string };
   try {
