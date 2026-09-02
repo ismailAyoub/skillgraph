@@ -10,6 +10,8 @@ export interface SkillIndexEntry {
   nodeCount: number;
   /** Where the skill came from, when it is linked to a folder through the local bridge. */
   origin?: BridgeOrigin;
+  /** Row id in the user's cloud account when the skill is synced there. */
+  cloudId?: string;
 }
 
 const INDEX_KEY = 'skillgraph:index';
@@ -60,6 +62,19 @@ export async function setSkillOrigin(id: string, origin: BridgeOrigin | undefine
     INDEX_KEY,
     idx.map((e) => (e.id === id ? { ...e, origin } : e)),
   );
+}
+
+export async function setSkillCloudId(id: string, cloudId: string | undefined): Promise<void> {
+  const idx = (await get<SkillIndexEntry[]>(INDEX_KEY)) ?? [];
+  await set(
+    INDEX_KEY,
+    idx.map((e) => (e.id === id ? { ...e, cloudId } : e)),
+  );
+}
+
+export async function findSkillByCloudId(cloudId: string): Promise<SkillIndexEntry | undefined> {
+  const idx = (await get<SkillIndexEntry[]>(INDEX_KEY)) ?? [];
+  return idx.find((e) => e.cloudId === cloudId);
 }
 
 export async function deleteSkill(id: string): Promise<void> {

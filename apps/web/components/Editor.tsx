@@ -3,6 +3,7 @@
 import { ArrowLeft, Copy, Flame, HardDrive, LayoutGrid, Redo2, Undo2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { CloudControls } from '@/components/CloudControls';
 import { Canvas } from '@/components/canvas/Canvas';
 import { DriftModal } from '@/components/DriftModal';
 import { ExportMenu } from '@/components/ExportMenu';
@@ -89,7 +90,7 @@ export function Editor({ id }: { id: string }) {
     <div className="flex h-screen flex-col">
       <header className="flex items-center gap-2 border-b border-[var(--line)] bg-white px-3 py-1.5">
         <Link
-          href="/"
+          href="/app"
           className="flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--ink)]"
         >
           <ArrowLeft size={14} /> Skills
@@ -150,6 +151,7 @@ export function Editor({ id }: { id: string }) {
         >
           <Flame size={14} /> Heatmap
         </Button>
+        <CloudControls />
         <SettingsButton />
         <Button
           onClick={() => navigator.clipboard.writeText(compiled.skillMd)}

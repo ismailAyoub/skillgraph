@@ -173,3 +173,115 @@ body {
   padding-left: 8px;
   color: var(--muted);
 }
+
+/* ---------------------------------------------------------------------------
+   Marketing site (/, /login). Same palette as the editor; adds node colours,
+   a mono face and the hero's node <-> line hover link.
+--------------------------------------------------------------------------- */
+:root {
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --code-bg: #f0f0ee;
+  --n-entry: #3b5bdb;
+  --n-step: #1f8a4c;
+  --n-decision: #b7791f;
+  --n-reference: #1c7ed6;
+  --n-phase: #6b6b73;
+}
+
+.mk {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.mk-display {
+  font-size: clamp(38px, 6vw, 64px);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+
+.mk-h2 {
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+.mk-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.mk-mono {
+  font-family: var(--mono);
+}
+
+.mk-code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.mk a:focus-visible,
+.mk button:focus-visible,
+.mk input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Hero figure: hover a node and the line it compiles to lights up, and back. */
+.mk-hero [data-line] {
+  display: block;
+  border-radius: 4px;
+  margin: 0 -6px;
+  padding: 0 6px;
+  transition: background-color 120ms ease;
+}
+.mk-hero span[data-line] {
+  display: inline;
+  margin: 0;
+  padding: 0 2px;
+}
+.mk-hero .mk-nbox {
+  transition:
+    stroke-width 120ms ease,
+    filter 120ms ease;
+}
+.mk-hero [data-line]:hover,
+.mk-hero:has([data-node="entry"]:hover) [data-line="entry"],
+.mk-hero:has([data-node="diverge"]:hover) [data-line="diverge"],
+.mk-hero:has([data-node="restate"]:hover) [data-line="restate"],
+.mk-hero:has([data-node="angles"]:hover) [data-line="angles"],
+.mk-hero:has([data-node="ref"]:hover) [data-line="ref"],
+.mk-hero:has([data-node="alike"]:hover) [data-line="alike"],
+.mk-hero:has([data-node="converge"]:hover) [data-line="converge"],
+.mk-hero:has([data-node="pick"]:hover) [data-line="pick"] {
+  background: var(--accent-soft);
+}
+.mk-hero [data-node]:hover .mk-nbox,
+.mk-hero:has([data-line="entry"]:hover) [data-node="entry"] .mk-nbox,
+.mk-hero:has([data-line="diverge"]:hover) [data-node="diverge"] .mk-nbox,
+.mk-hero:has([data-line="restate"]:hover) [data-node="restate"] .mk-nbox,
+.mk-hero:has([data-line="angles"]:hover) [data-node="angles"] .mk-nbox,
+.mk-hero:has([data-line="ref"]:hover) [data-node="ref"] .mk-nbox,
+.mk-hero:has([data-line="alike"]:hover) [data-node="alike"] .mk-nbox,
+.mk-hero:has([data-line="converge"]:hover) [data-node="converge"] .mk-nbox,
+.mk-hero:has([data-line="pick"]:hover) [data-node="pick"] .mk-nbox {
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 0 var(--accent-soft)) drop-shadow(0 1px 2px rgb(0 0 0 / 0.12));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-hero [data-line],
+  .mk-hero .mk-nbox {
+    transition: none;
+  }
+}

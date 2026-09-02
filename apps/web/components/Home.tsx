@@ -5,6 +5,8 @@ import { FolderOpen, Plus, Trash2, Upload } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AccountBar } from '@/components/AccountBar';
+import { CloudSkills } from '@/components/CloudSkills';
 import { LocalSkills } from '@/components/LocalSkills';
 import { Button, Field, Input, Pill, Select } from '@/components/ui';
 import { deleteSkill, listSkills, type SkillIndexEntry, saveSkill } from '@/lib/db';
@@ -55,6 +57,7 @@ export function Home() {
 
   return (
     <div className="mx-auto max-w-4xl p-8">
+      <AccountBar />
       <header className="mb-8">
         <h1 className="text-2xl font-bold">SkillGraph</h1>
         <p className="text-sm text-[var(--muted)]">
@@ -124,6 +127,8 @@ export function Home() {
         </div>
       </section>
 
+      <CloudSkills />
+
       <LocalSkills />
 
       <section>
@@ -142,6 +147,7 @@ export function Home() {
                 <div className="text-sm font-semibold">{s.name}</div>
                 <div className="line-clamp-1 text-[11px] text-[var(--muted)]">{s.description}</div>
               </button>
+              {s.cloudId && <Pill tone="ok">cloud</Pill>}
               <Pill>{s.nodeCount} nodes</Pill>
               <span className="text-[10px] text-[var(--muted)]">
                 {new Date(s.updatedAt).toLocaleString()}

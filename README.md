@@ -96,7 +96,7 @@ Every other text file in the folder survives byte for byte, and compiling the de
 | M3 Import and sync | Done. Fidelity report, drift protection with a "re-import vs overwrite" modal, MCP server plus the `skillgraph-authoring` meta-skill. |
 | M4 AI assist | Done. `@skillgraph/ai`: critique, description composer, trigger-query generator, node copilot, interview to graph, transcript to skill, docs to references, import fallback. Web AI tab and `skillgraph ai`, powered by an Anthropic API key or, with no key, your local Claude Code login through `skillgraph dev`; every AI result is a proposal until you apply it. |
 | M5 Evals | Done. `skillgraph eval`: trigger evals and description optimizer via `claude -p`, task evals with and without the skill, grader, skill-creator compatible `benchmark.json`, execution traces and a coverage heatmap on the canvas. |
-| M6 Distribution | Done except hosted accounts. Export as zip, `.skill`, Claude Code plugin (with marketplace manifest) or `skills/` repo; `skillgraph publish` uploads to the Anthropic Skills API; template gallery with nine genres. Hosted accounts with cloud save and share links are not built; the app stays local-first. Codex, Cursor and Gemini consume the `universal` profile, so they have no separate profile. |
+| M6 Distribution | Done. Accounts and cloud save via Supabase (email + password, magic link, GitHub/Google), share links at `/s/<slug>`, marketing home page and login page. Export as zip, `.skill`, Claude Code plugin (with marketplace manifest) or `skills/` repo; `skillgraph publish` uploads to the Anthropic Skills API; template gallery with nine genres. The app stays local-first: everything works signed out, and skills only leave the browser when you press "Save to cloud". Codex, Cursor and Gemini consume the `universal` profile, so they have no separate profile. |
 
 ## Web editor
 
@@ -187,6 +187,14 @@ skillgraph publish <dir> [--display-name n] [--version-of <skillId>] [--dry-run]
 ```
 
 The plugin layout carries `.claude-plugin/plugin.json` and a one-plugin `marketplace.json`, so the folder works with `claude --plugin-dir` and as a marketplace source. `publish` compiles with the universal profile, refuses on lint errors unless `--force`, and uses the Anthropic Skills API (`ANTHROPIC_API_KEY` or `--key`). The editor's Export menu offers the same four formats.
+
+## Accounts and cloud save
+
+Optional. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (see `.env.example`) and the site gains `/login`, a dashboard at `/app` with a "Cloud skills" section, "Save to cloud" and "Share" in the editor header, and public read-only pages at `/s/<slug>`. Without those variables every sign-in affordance hides itself and the app stays browser-only.
+
+Schema: `apps/web/supabase/migrations/0001_skills.sql` (one `skills` table, row-level security so owners read and write their rows and anyone can read a row marked public; `set_skill_public()` allocates the share slug). Sessions are cookie-based through `@supabase/ssr`; `apps/web/proxy.ts` refreshes them and `app/auth/callback` completes OAuth and magic-link sign-ins.
+
+One-time Supabase dashboard setup (not scriptable through the MCP): Authentication → URL Configuration → Site URL = your production origin, and add `<origin>/auth/callback` for production, previews and `http://localhost:3210` to the redirect allowlist. Enable the GitHub and Google providers with their client ids if you want those buttons to work; email + password works out of the box (turn off "Confirm email" if you do not want the confirmation step).
 
 ## Development notes
 

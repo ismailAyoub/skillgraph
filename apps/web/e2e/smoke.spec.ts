@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 const FIXTURE = resolve(__dirname, '../../../fixtures/web-design-guidelines/SKILL.md');
 
 test('create a skill from a template, edit it, and see the compiled preview', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
   await page.getByLabel(/name/i).first().fill('smoke-skill');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page).toHaveURL(/\/edit\//);
@@ -41,7 +41,7 @@ test('create a skill from a template, edit it, and see the compiled preview', as
 });
 
 test('import a SKILL.md and compile it back', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
   await page.locator('input[type=file][accept]').setInputFiles(FIXTURE);
   await expect(page).toHaveURL(/\/edit\//);
   await expect(page.locator('header')).toContainText('web-design-guidelines');
@@ -51,7 +51,7 @@ test('import a SKILL.md and compile it back', async ({ page }) => {
 });
 
 async function newSkill(page: import('@playwright/test').Page, name: string) {
-  await page.goto('/');
+  await page.goto('/app');
   await page.getByLabel(/name/i).first().fill(name);
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page).toHaveURL(/\/edit\//);
@@ -75,4 +75,50 @@ test('settings dialog stores the API key in localStorage', async ({ page }) => {
     .toBe('sk-test');
   // The header stops nagging once a key is set.
   await expect(page.getByRole('button', { name: 'Settings' })).not.toContainText('Set API key');
+});
+
+test('landing page renders the hero and links to the editor', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('See the skill');
+  const cta = page.getByRole('main').getByRole('link', { name: 'Open the editor' });
+  await expect(cta).toHaveAttribute('href', '/app');
+  await expect(page.getByRole('img', { name: /skill graph/i })).toBeVisible();
+});
+
+test('login page shows the three tabs, or the local-first note without accounts', async ({
+  page,
+}) => {
+  await page.goto('/login');
+  await expect(page.getByTestId('login-card')).toBeVisible();
+  const disabled = page.getByTestId('accounts-disabled');
+  if (await disabled.isVisible()) {
+    await expect(disabled).toContainText(/accounts/i);
+    await expect(page.getByRole('link', { name: 'Continue without an account' })).toHaveAttribute(
+      'href',
+      '/app',
+    );
+    return;
+  }
+  const tabs = page.getByTestId('login-tabs');
+  for (const name of ['Sign in', 'Create account', 'Email link'])
+    await expect(tabs.getByRole('button', { name, exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Continue without an account' })).toHaveAttribute(
+    'href',
+    '/app',
+  );
+});
+
+test('dashboard shows the account bar and the shared-skill page handles unknown slugs', async ({
+  page,
+}) => {
+  await page.goto('/app');
+  await expect(page.getByText('Dashboard')).toBeVisible();
+  // With Supabase env set a Sign in button appears; without it the bar stays minimal.
+  const signIn = page.getByRole('button', { name: /sign in/i });
+  const enabled = (await signIn.count()) > 0;
+  if (enabled) await expect(signIn).toBeVisible();
+
+  await page.goto('/s/not-a-real-slug');
+  await expect(page.getByText(/not public|Accounts are not enabled|Loading/)).toBeVisible();
+  if (enabled) await expect(page.getByText('This link is not public.')).toBeVisible();
 });

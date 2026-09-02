@@ -16,7 +16,8 @@ import {
 } from '@skillgraph/core';
 import { create } from 'zustand';
 import { type BridgeOrigin, bridgeOpen, bridgeSave, bridgeTraces, type HeatCell } from './bridge';
-import { getSkillEntry, loadSkill, saveSkill, setSkillOrigin } from './db';
+import { saveCloudSkill } from './cloud';
+import { getSkillEntry, loadSkill, saveSkill, setSkillCloudId, setSkillOrigin } from './db';
 import { autoLayout, type Box } from './layout';
 import { preserveLayout } from './layoutPreserve';
 import { ATTACH_KINDS_SET, CONTAINER_KINDS_SET, defaultNodeData, FILE_KINDS_SET } from './nodeMeta';
@@ -42,6 +43,10 @@ export interface EditorState {
   error: string | null;
   /** Set when the skill is linked to a folder through the local bridge. */
   origin: BridgeOrigin | null;
+  /** Cloud row id when the skill is synced to the signed-in account. */
+  cloudId: string | null;
+  cloudStatus: 'idle' | 'saving' | 'saved' | 'error';
+  cloudMessage: string | null;
   bridgeStatus: 'idle' | 'saving' | 'saved' | 'drift' | 'error';
   bridgeMessage: string | null;
   /** Per-node visit ratios from eval traces (bridge only); null until loaded. */
@@ -71,6 +76,9 @@ export interface EditorState {
   /** Write the compiled skill back to its folder through the bridge. Returns drifted files on conflict. */
   saveToBridge(force?: boolean): Promise<{ ok: boolean; drifted?: string[] }>;
   unlinkBridge(): Promise<void>;
+  /** Create the cloud row for this skill (signed-in users); later edits sync automatically. */
+  saveToCloud(): Promise<void>;
+  unlinkCloud(): Promise<void>;
   /** Re-read the skill from its folder, keeping layout positions for nodes that still exist. */
   reimportFromBridge(): Promise<void>;
   /** Fetch eval traces through the bridge (no-op without a bridge origin). */
@@ -105,6 +113,9 @@ export const useEditor = create<EditorState>((set, get) => ({
   fitRequest: 0,
   error: null,
   origin: null,
+  cloudId: null,
+  cloudStatus: 'idle',
+  cloudMessage: null,
   bridgeStatus: 'idle',
   bridgeMessage: null,
   heatmap: null,
@@ -120,6 +131,9 @@ export const useEditor = create<EditorState>((set, get) => ({
     const entry = await getSkillEntry(id);
     set({
       origin: entry?.origin ?? null,
+      cloudId: entry?.cloudId ?? null,
+      cloudStatus: 'idle',
+      cloudMessage: null,
       bridgeStatus: 'idle',
       bridgeMessage: null,
       heatmap: null,
@@ -394,6 +408,26 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
   },
 
+  async saveToCloud() {
+    const { file, skillId, cloudId } = get();
+    if (!file || !skillId) return;
+    set({ cloudStatus: 'saving', cloudMessage: null });
+    try {
+      const id = await saveCloudSkill(file, cloudId ?? undefined);
+      await setSkillCloudId(skillId, id);
+      set({ cloudId: id, cloudStatus: 'saved', cloudMessage: null });
+    } catch (e) {
+      set({ cloudStatus: 'error', cloudMessage: (e as Error).message });
+    }
+  },
+
+  async unlinkCloud() {
+    const { skillId } = get();
+    if (!skillId) return;
+    await setSkillCloudId(skillId, undefined);
+    set({ cloudId: null, cloudStatus: 'idle', cloudMessage: null });
+  },
+
   async unlinkBridge() {
     const { skillId } = get();
     if (!skillId) return;
@@ -474,5 +508,24 @@ function schedulePersist() {
     useEditor.setState({ saving: true });
     await saveSkill(skillId, file);
     useEditor.setState({ saving: false });
+    if (useEditor.getState().cloudId) scheduleCloudSave();
   }, 400);
+}
+
+let cloudTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Debounced push of the current file to the cloud row (only when the skill is linked). */
+function scheduleCloudSave() {
+  if (cloudTimer) clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(async () => {
+    const { file, cloudId } = useEditor.getState();
+    if (!file || !cloudId) return;
+    useEditor.setState({ cloudStatus: 'saving' });
+    try {
+      await saveCloudSkill(file, cloudId);
+      useEditor.setState({ cloudStatus: 'saved', cloudMessage: null });
+    } catch (e) {
+      useEditor.setState({ cloudStatus: 'error', cloudMessage: (e as Error).message });
+    }
+  }, 1500);
 }
