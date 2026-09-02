@@ -7,15 +7,15 @@ import remarkGfm from 'remark-gfm';
 import { AiPanel } from '@/components/ai/AiPanel';
 import { Button, Pill, Tabs } from '@/components/ui';
 import { useEditor } from '@/lib/store';
-
-type Tab = 'rendered' | 'raw' | 'files' | 'lint' | 'diagram' | 'ai';
+import { type PreviewTab as Tab, useUi } from '@/lib/uiStore';
 
 export function Preview() {
   const compiled = useEditor((s) => s.compiled);
   const lintResult = useEditor((s) => s.lintResult);
   const file = useEditor((s) => s.file);
   const select = useEditor((s) => s.select);
-  const [tab, setTab] = useState<Tab>('rendered');
+  const tab = useUi((s) => s.previewTab);
+  const setTab = useUi((s) => s.setPreviewTab);
   const [activeFile, setActiveFile] = useState<string>('SKILL.md');
 
   const mermaid = useMemo(() => (file ? toMermaid(new Ctx(file.doc)) : ''), [file]);

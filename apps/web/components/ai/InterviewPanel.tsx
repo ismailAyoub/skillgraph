@@ -1,6 +1,7 @@
 'use client';
 
 import type { InterviewStep, InterviewTurn } from '@skillgraph/ai';
+import { useEffect, useRef } from 'react';
 import { Button, Pill, TextArea } from '@/components/ui';
 import { callAi } from '@/lib/ai';
 import { useAiPanel } from '@/lib/aiStore';
@@ -13,6 +14,7 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
   const turns = useAiPanel((s) => s.interviewTurns);
   const step = useAiPanel((s) => s.interviewStep);
   const draft = useAiPanel((s) => s.interviewDraft);
+  const pending = useAiPanel((s) => s.interviewPending);
   const setValue = useAiPanel((s) => s.set);
   const { busy, error, run } = useAiRun();
 
@@ -37,6 +39,15 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
     );
   };
 
+  // A first message queued by the dashboard card is sent as soon as AI is reachable.
+  const advanceRef = useRef(advance);
+  advanceRef.current = advance;
+  useEffect(() => {
+    if (!pending || disabled || !doc) return;
+    setValue('interviewPending', false);
+    advanceRef.current(useAiPanel.getState().interviewTurns);
+  }, [pending, disabled, doc, setValue]);
+
   const send = () => {
     const text = draft.trim();
     if (!text) return;
@@ -48,14 +59,15 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
     setValue('interviewTurns', []);
     setValue('interviewStep', null);
     setValue('interviewDraft', '');
+    setValue('interviewPending', false);
   };
 
   return (
     <div className="space-y-2 p-2 text-[11px]">
       {turns.length === 0 && !step && (
         <p className="leading-snug text-[var(--muted)]">
-          The model asks one question at a time and edits the graph as you answer. Every edit lands
-          on the undo stack.
+          Chat with Claude to build this skill. It asks one question at a time and draws the graph
+          on the canvas as you answer. Every edit lands on the undo stack.
         </p>
       )}
       <div className="space-y-1.5">
@@ -93,9 +105,25 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
         </div>
       )}
       {turns.length === 0 && !step ? (
-        <Button variant="primary" onClick={() => advance([])} disabled={disabled || busy || !doc}>
-          Start interview
-        </Button>
+        <div className="space-y-1.5">
+          <TextArea
+            value={draft}
+            onChange={(e) => setValue('interviewDraft', e.target.value)}
+            placeholder="What should this skill do? (or press Start and let Claude ask)"
+            disabled={disabled || busy}
+            data-testid="chat-draft"
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              onClick={() => (draft.trim() ? send() : advance([]))}
+              disabled={disabled || busy || !doc}
+              data-testid="chat-start"
+            >
+              {draft.trim() ? 'Send' : 'Start chatting'}
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="space-y-1.5">
           {!step?.done && (
@@ -105,6 +133,10 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
                 onChange={(e) => setValue('interviewDraft', e.target.value)}
                 placeholder="Your answer…"
                 disabled={disabled || busy}
+                data-testid="chat-draft"
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') send();
+                }}
               />
               <div className="flex gap-2">
                 <Button

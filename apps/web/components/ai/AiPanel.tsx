@@ -11,10 +11,10 @@ import { ImportPanel } from './ImportPanel';
 import { InterviewPanel } from './InterviewPanel';
 
 const MODES: { id: AiMode; label: string }[] = [
+  { id: 'interview', label: 'Chat' },
   { id: 'critique', label: 'Critique' },
   { id: 'describe', label: 'Describe' },
   { id: 'copilot', label: 'Copilot' },
-  { id: 'interview', label: 'Interview' },
   { id: 'import', label: 'Import' },
 ];
 

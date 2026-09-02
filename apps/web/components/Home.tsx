@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccountBar } from '@/components/AccountBar';
+import { AiStart } from '@/components/AiStart';
 import { CloudSkills } from '@/components/CloudSkills';
 import { LocalSkills } from '@/components/LocalSkills';
 import { Button, Field, Input, Pill, Select } from '@/components/ui';
@@ -65,10 +66,12 @@ export function Home() {
         </p>
       </header>
 
+      <AiStart />
+
       <section className="mb-8 grid grid-cols-2 gap-6">
         <div className="rounded-lg border border-[var(--line)] bg-white p-4">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-            <Plus size={16} /> New skill
+            <Plus size={16} /> Start from a template
           </h2>
           <div className="space-y-3">
             <Field label="Name" hint="kebab-case">

@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { Button, Pill } from '@/components/ui';
 import { AiClientError, NO_KEY_HINT } from '@/lib/ai';
 import { useEditor } from '@/lib/store';
+import { useUi } from '@/lib/uiStore';
 
 /** One line per op: what it does, to which node, and which keys it touches. */
 export function summarizeOp(op: PatchOpT): { kind: string; id: string; keys: string[] } {
@@ -98,12 +99,16 @@ export function Busy({ label = 'Thinking…' }: { label?: string }) {
 }
 
 export function NoKeyHint() {
+  const setAiSetupOpen = useUi((s) => s.setAiSetupOpen);
   return (
     <div
       data-testid="ai-no-key"
-      className="rounded border border-[var(--line)] bg-neutral-50 px-2 py-1.5 text-[11px] text-[var(--muted)]"
+      className="space-y-1.5 rounded border border-[var(--accent)] bg-[var(--accent-soft)]/40 px-2 py-2 text-[11px]"
     >
-      {NO_KEY_HINT}
+      <p className="leading-snug">{NO_KEY_HINT}</p>
+      <Button variant="primary" onClick={() => setAiSetupOpen(true)}>
+        Connect AI
+      </Button>
     </div>
   );
 }
