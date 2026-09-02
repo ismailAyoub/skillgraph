@@ -1,4 +1,14 @@
-import { compile, decompile, migrate, type SkillFile } from '@skillgraph/core';
+import {
+  compile,
+  decompile,
+  type EntryNodeT,
+  migrate,
+  type PluginScaffoldOptions,
+  pluginScaffold,
+  type Scaffold,
+  type SkillFile,
+  skillsRepoScaffold,
+} from '@skillgraph/core';
 import { strToU8, unzipSync, zipSync } from 'fflate';
 
 const TEXT_EXT =
@@ -76,21 +86,63 @@ export async function importFiles(files: File[]): Promise<ImportedSkill> {
   return { file, coverage: report.coverage, source: 'skill.md' };
 }
 
-/** Zip a compiled skill (folder-rooted) for download. */
+type Profile = 'universal' | 'claude-code';
+
+function entryOf(file: SkillFile): EntryNodeT {
+  return file.doc.nodes.find((n) => n.kind === 'entry') as EntryNodeT;
+}
+
+/** Zip a scaffold under a single `root/` folder. */
+function zipScaffold(root: string, scaffold: Scaffold): Uint8Array {
+  const entries: Record<string, Uint8Array> = {};
+  for (const [rel, content] of Object.entries(scaffold.files))
+    entries[`${root}/${rel}`] = strToU8(content);
+  for (const [rel, b64] of Object.entries(scaffold.binaryFiles))
+    entries[`${root}/${rel}`] = base64ToBytes(b64);
+  return zipSync(entries, { level: 6 });
+}
+
+/**
+ * Zip a compiled skill (folder-rooted) for download. `clean` (or `includeGraph: false`) omits
+ * SKILL.graph.json, which is what claude.ai and the Skills API expect.
+ */
 export function buildZip(
   file: SkillFile,
-  opts: { includeGraph?: boolean; profile?: 'universal' | 'claude-code' } = {},
+  opts: { includeGraph?: boolean; clean?: boolean; profile?: Profile } = {},
 ): { name: string; data: Uint8Array } {
   const result = compile(file.doc, { profile: opts.profile });
-  const entry = file.doc.nodes.find((n) => n.kind === 'entry') as { name: string };
-  const entries: Record<string, Uint8Array> = {};
-  for (const [rel, content] of Object.entries(result.files))
-    entries[`${entry.name}/${rel}`] = strToU8(content);
-  for (const [rel, b64] of Object.entries(result.binaryFiles))
-    entries[`${entry.name}/${rel}`] = base64ToBytes(b64);
-  if (opts.includeGraph !== false)
-    entries[`${entry.name}/SKILL.graph.json`] = strToU8(`${JSON.stringify(file, null, 2)}\n`);
-  return { name: entry.name, data: zipSync(entries, { level: 6 }) };
+  const entry = entryOf(file);
+  const scaffold: Scaffold = { files: { ...result.files }, binaryFiles: { ...result.binaryFiles } };
+  const includeGraph = opts.clean ? false : opts.includeGraph !== false;
+  if (includeGraph) scaffold.files['SKILL.graph.json'] = `${JSON.stringify(file, null, 2)}\n`;
+  return { name: entry.name, data: zipScaffold(entry.name, scaffold) };
+}
+
+/** Zip a Claude Code plugin (also a one-plugin marketplace) rooted at `<pluginName>-plugin/`. */
+export function buildPluginZip(
+  file: SkillFile,
+  opts: PluginScaffoldOptions & { profile?: Profile } = {},
+): { name: string; data: Uint8Array } {
+  const { profile, ...scaffoldOpts } = opts;
+  const result = compile(file.doc, { profile });
+  const entry = entryOf(file);
+  const scaffold = pluginScaffold(result, entry, scaffoldOpts);
+  const pluginName: string = JSON.parse(
+    scaffold.files['.claude-plugin/plugin.json'] as string,
+  ).name;
+  const root = `${pluginName}-plugin`;
+  return { name: root, data: zipScaffold(root, scaffold) };
+}
+
+/** Zip a `skills/<name>/` repository layout (for `npx skills add`) rooted at `<name>-skills/`. */
+export function buildSkillsRepoZip(
+  file: SkillFile,
+  opts: { profile?: Profile } = {},
+): { name: string; data: Uint8Array } {
+  const result = compile(file.doc, { profile: opts.profile });
+  const entry = entryOf(file);
+  const root = `${entry.name}-skills`;
+  return { name: root, data: zipScaffold(root, skillsRepoScaffold(result, entry)) };
 }
 
 export function download(

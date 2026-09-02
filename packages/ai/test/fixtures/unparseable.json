@@ -1,0 +1,10 @@
+{
+  "stop_reason": "end_turn",
+  "content": [
+    {
+      "type": "text",
+      "text": "not json"
+    }
+  ],
+  "parsed_output": null
+}

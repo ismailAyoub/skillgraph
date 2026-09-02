@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { compile, contentHash, decompile, migrate, type SkillFile } from '@skillgraph/core';
 import pc from 'picocolors';
+import { aggregateTraceFiles, readTraces } from '../eval/trace';
 import { GRAPH_FILE, graphPath, readJson, readSkillDir, writeFiles, writeJson } from '../fs';
 
 const VERSION = '0.1.0';
@@ -81,11 +82,18 @@ export function devCommand(args: { dir?: string; port?: number; host?: string })
       if (url.pathname === '/api/skills' && req.method === 'GET')
         return json(res, 200, listSkills(dir));
 
-      const m = url.pathname.match(/^\/api\/skills\/([^/]+)(\/import)?$/);
+      const m = url.pathname.match(/^\/api\/skills\/([^/]+)(\/import|\/traces)?$/);
       if (!m) return json(res, 404, { error: 'not found' });
       const name = safeName(m[1] as string);
       if (!name) return json(res, 400, { error: 'invalid skill name' });
       const skillDir = join(dir, name);
+
+      if (m[2] === '/traces') {
+        if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
+        if (!existsSync(skillDir)) return json(res, 404, { error: `no skill folder ${name}` });
+        const traces = readTraces(skillDir);
+        return json(res, 200, { traces, heatmap: aggregateTraceFiles(traces) });
+      }
 
       if (req.method === 'GET') {
         if (!existsSync(skillDir)) return json(res, 404, { error: `no skill folder ${name}` });

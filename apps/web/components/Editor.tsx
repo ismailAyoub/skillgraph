@@ -1,14 +1,16 @@
 'use client';
 
-import { ArrowLeft, Copy, Download, HardDrive, LayoutGrid, Redo2, Undo2 } from 'lucide-react';
+import { ArrowLeft, Copy, Flame, HardDrive, LayoutGrid, Redo2, Undo2 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Canvas } from '@/components/canvas/Canvas';
+import { DriftModal } from '@/components/DriftModal';
+import { ExportMenu } from '@/components/ExportMenu';
 import { Inspector } from '@/components/inspector/Inspector';
 import { Palette } from '@/components/Palette';
 import { Preview } from '@/components/preview/Preview';
+import { SettingsButton } from '@/components/SettingsDialog';
 import { Button, Pill, Select } from '@/components/ui';
-import { buildZip, download } from '@/lib/io';
 import { useEditor } from '@/lib/store';
 
 export function Editor({ id }: { id: string }) {
@@ -29,17 +31,27 @@ export function Editor({ id }: { id: string }) {
   const bridgeStatus = useEditor((s) => s.bridgeStatus);
   const bridgeMessage = useEditor((s) => s.bridgeMessage);
   const saveToBridge = useEditor((s) => s.saveToBridge);
+  const reimportFromBridge = useEditor((s) => s.reimportFromBridge);
+  const heatmap = useEditor((s) => s.heatmap);
+  const showHeatmap = useEditor((s) => s.showHeatmap);
+  const setShowHeatmap = useEditor((s) => s.setShowHeatmap);
+  const loadHeatmap = useEditor((s) => s.loadHeatmap);
+  const [drifted, setDrifted] = useState<string[] | null>(null);
 
   const onSaveToDisk = async () => {
     const res = await saveToBridge(false);
-    if (!res.ok && res.drifted) {
-      if (
-        confirm(
-          `These files changed on disk since you opened the skill:\n${res.drifted.join('\n')}\n\nOverwrite them?`,
-        )
-      )
-        await saveToBridge(true);
-    }
+    if (!res.ok && res.drifted) setDrifted(res.drifted);
+  };
+
+  const onReimport = async () => {
+    await reimportFromBridge();
+    setDrifted(null);
+    void loadHeatmap();
+  };
+
+  const onOverwrite = async () => {
+    await saveToBridge(true);
+    setDrifted(null);
   };
 
   useEffect(() => {
@@ -126,21 +138,26 @@ export function Editor({ id }: { id: string }) {
           <LayoutGrid size={14} /> Layout
         </Button>
         <Button
+          onClick={() => setShowHeatmap(!showHeatmap)}
+          disabled={!heatmap}
+          aria-pressed={showHeatmap}
+          className={showHeatmap ? 'border-[var(--accent)] text-[var(--accent)]' : ''}
+          title={
+            heatmap
+              ? 'Tint nodes by how often eval traces visited them'
+              : 'Run `skillgraph eval run --trace` to collect traces'
+          }
+        >
+          <Flame size={14} /> Heatmap
+        </Button>
+        <SettingsButton />
+        <Button
           onClick={() => navigator.clipboard.writeText(compiled.skillMd)}
           title="Copy SKILL.md"
         >
           <Copy size={14} /> Copy
         </Button>
-        <Button
-          variant="primary"
-          onClick={() => {
-            const { name, data } = buildZip(file);
-            download(`${name}.zip`, data, 'application/zip');
-          }}
-          title="Download the skill folder as a zip (includes SKILL.graph.json)"
-        >
-          <Download size={14} /> Export
-        </Button>
+        <ExportMenu file={file} />
       </header>
       <div className="grid min-h-0 flex-1 grid-cols-[210px_1fr_440px]">
         <aside className="min-h-0 border-r border-[var(--line)] bg-white">
@@ -158,6 +175,15 @@ export function Editor({ id }: { id: string }) {
           </div>
         </aside>
       </div>
+      {drifted && (
+        <DriftModal
+          drifted={drifted}
+          busy={bridgeStatus === 'saving'}
+          onReimport={() => void onReimport()}
+          onOverwrite={() => void onOverwrite()}
+          onClose={() => setDrifted(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,0 +1,38 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "rationale": "Extracts the two-step procedure and the reviewer-facing checklist seen in the transcript.",
+    "patch": {
+      "ops": [
+        {
+          "op": "update",
+          "id": "entry_root",
+          "node": null,
+          "data": "{\"description\":\"Writes pull request descriptions from a diff. Use when the user asks for a PR summary, a change summary or reviewer notes.\"}",
+          "edge": null,
+          "parentId": null,
+          "order": null
+        },
+        {
+          "op": "add",
+          "id": null,
+          "node": "{\"id\":\"step_checklist\",\"kind\":\"step\",\"parentId\":\"phase_review\",\"order\":2,\"title\":\"List the risky areas\",\"instruction\":\"List the files a reviewer should look at first and say why each is risky.\"}",
+          "data": null,
+          "edge": null,
+          "parentId": null,
+          "order": null
+        },
+        {
+          "op": "addEdge",
+          "id": null,
+          "node": null,
+          "data": null,
+          "edge": "{\"id\":\"edge_flow_2\",\"kind\":\"next\",\"source\":\"step_write\",\"target\":\"step_checklist\"}",
+          "parentId": null,
+          "order": null
+        }
+      ]
+    }
+  }
+}

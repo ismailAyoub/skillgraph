@@ -1,6 +1,7 @@
 export * from './compiler/index';
 export type { FidelityItem, FidelityReport, ImportInput, ImportResult } from './decompiler/index';
 export { decompile } from './decompiler/index';
+export * from './export/index';
 export type { LintOptions, LintResult } from './lint/index';
 export { lint } from './lint/index';
 export {

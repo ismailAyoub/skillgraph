@@ -1,0 +1,54 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "summary": "The procedure is sound, but the description under-triggers and the second step never says why it matters.",
+    "findings": [
+      {
+        "severity": "warning",
+        "rule": "AI/Description Not Pushy",
+        "message": "The description names no concrete user phrasing, so Claude will under-trigger.",
+        "nodeId": "entry_root",
+        "patch": {
+          "ops": [
+            {
+              "op": "update",
+              "id": "entry_root",
+              "node": null,
+              "data": "{\"description\":\"Reviews and rewrites pull request descriptions. Use whenever the user asks for a PR summary, a changelog entry or a description of a diff, even if they never say \\\"pull request\\\".\"}",
+              "edge": null,
+              "parentId": null,
+              "order": null
+            }
+          ]
+        }
+      },
+      {
+        "severity": "info",
+        "rule": "ai/step-missing-why",
+        "message": "step_write does not explain why three sentences is the right length.",
+        "nodeId": "step_write",
+        "patch": null
+      },
+      {
+        "severity": "error",
+        "rule": "ai/dead-branch",
+        "message": "A finding whose fix references a node that does not exist.",
+        "nodeId": null,
+        "patch": {
+          "ops": [
+            {
+              "op": "update",
+              "id": "step_missing",
+              "node": null,
+              "data": "{\"why\":\"nope\"}",
+              "edge": null,
+              "parentId": null,
+              "order": null
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

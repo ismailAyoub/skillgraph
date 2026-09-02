@@ -1,0 +1,38 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "visits": [
+      {
+        "nodeId": "step_read",
+        "turn": 1,
+        "evidence": "Read the diff with git diff main...HEAD",
+        "confidence": 0.9
+      },
+      {
+        "nodeId": "step_write",
+        "turn": 2,
+        "evidence": "Drafted the summary",
+        "confidence": 0.75
+      },
+      {
+        "nodeId": "step_write",
+        "turn": 9,
+        "evidence": "turn not present in the events",
+        "confidence": 0.8
+      },
+      {
+        "nodeId": "step_ghost",
+        "turn": 2,
+        "evidence": "node not in the graph",
+        "confidence": 0.8
+      },
+      {
+        "nodeId": "reference_style",
+        "turn": 2,
+        "evidence": "weak guess",
+        "confidence": 0.1
+      }
+    ]
+  }
+}

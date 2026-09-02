@@ -1,0 +1,29 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "rationale": "Turns the leftover notes list into a verification checklist in the same position.",
+    "patch": {
+      "ops": [
+        {
+          "op": "add",
+          "id": null,
+          "node": "{\"id\":\"checklist_before_publish\",\"kind\":\"checklist\",\"parentId\":null,\"order\":3,\"variant\":\"verification\",\"style\":\"task\",\"items\":[{\"text\":\"The tests pass.\"},{\"text\":\"The changelog is updated.\"}]}",
+          "data": null,
+          "edge": null,
+          "parentId": null,
+          "order": null
+        },
+        {
+          "op": "remove",
+          "id": "raw_leftover",
+          "node": null,
+          "data": null,
+          "edge": null,
+          "parentId": null,
+          "order": null
+        }
+      ]
+    }
+  }
+}

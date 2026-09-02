@@ -1,0 +1,32 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "queries": [
+      {
+        "query": "write the PR body for the branch i just pushed",
+        "should_trigger": true
+      },
+      {
+        "query": "i need a summary of this diff for reviewers, keep it short",
+        "should_trigger": true
+      },
+      {
+        "query": "can you review this pull request for bugs",
+        "should_trigger": false
+      },
+      {
+        "query": "write a commit message for these staged changes",
+        "should_trigger": false
+      },
+      {
+        "query": "extra query beyond the requested count",
+        "should_trigger": true
+      },
+      {
+        "query": "another extra query beyond the requested count",
+        "should_trigger": false
+      }
+    ]
+  }
+}

@@ -15,9 +15,10 @@ import {
   type SkillNode,
 } from '@skillgraph/core';
 import { create } from 'zustand';
-import { type BridgeOrigin, bridgeSave } from './bridge';
+import { type BridgeOrigin, bridgeOpen, bridgeSave, bridgeTraces, type HeatCell } from './bridge';
 import { getSkillEntry, loadSkill, saveSkill, setSkillOrigin } from './db';
 import { autoLayout, type Box } from './layout';
+import { preserveLayout } from './layoutPreserve';
 import { ATTACH_KINDS_SET, CONTAINER_KINDS_SET, defaultNodeData, FILE_KINDS_SET } from './nodeMeta';
 
 interface HistoryEntry {
@@ -43,6 +44,9 @@ export interface EditorState {
   origin: BridgeOrigin | null;
   bridgeStatus: 'idle' | 'saving' | 'saved' | 'drift' | 'error';
   bridgeMessage: string | null;
+  /** Per-node visit ratios from eval traces (bridge only); null until loaded. */
+  heatmap: Record<string, HeatCell> | null;
+  showHeatmap: boolean;
 
   load(id: string): Promise<void>;
   setFile(id: string, file: SkillFile): void;
@@ -67,6 +71,11 @@ export interface EditorState {
   /** Write the compiled skill back to its folder through the bridge. Returns drifted files on conflict. */
   saveToBridge(force?: boolean): Promise<{ ok: boolean; drifted?: string[] }>;
   unlinkBridge(): Promise<void>;
+  /** Re-read the skill from its folder, keeping layout positions for nodes that still exist. */
+  reimportFromBridge(): Promise<void>;
+  /** Fetch eval traces through the bridge (no-op without a bridge origin). */
+  loadHeatmap(): Promise<void>;
+  setShowHeatmap(v: boolean): void;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -98,6 +107,8 @@ export const useEditor = create<EditorState>((set, get) => ({
   origin: null,
   bridgeStatus: 'idle',
   bridgeMessage: null,
+  heatmap: null,
+  showHeatmap: false,
 
   async load(id) {
     const file = await loadSkill(id);
@@ -107,8 +118,15 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
     get().setFile(id, file);
     const entry = await getSkillEntry(id);
-    set({ origin: entry?.origin ?? null, bridgeStatus: 'idle', bridgeMessage: null });
+    set({
+      origin: entry?.origin ?? null,
+      bridgeStatus: 'idle',
+      bridgeMessage: null,
+      heatmap: null,
+      showHeatmap: false,
+    });
     if (Object.keys(file.layout.nodes).length === 0) await get().relayout();
+    if (entry?.origin) void get().loadHeatmap();
   },
 
   setFile(id, file) {
@@ -380,7 +398,54 @@ export const useEditor = create<EditorState>((set, get) => ({
     const { skillId } = get();
     if (!skillId) return;
     await setSkillOrigin(skillId, undefined);
-    set({ origin: null, bridgeStatus: 'idle', bridgeMessage: null });
+    set({
+      origin: null,
+      bridgeStatus: 'idle',
+      bridgeMessage: null,
+      heatmap: null,
+      showHeatmap: false,
+    });
+  },
+
+  async reimportFromBridge() {
+    const { file, origin, skillId } = get();
+    if (!file || !origin || !skillId) return;
+    set({ bridgeStatus: 'saving', bridgeMessage: null });
+    try {
+      const res = await bridgeOpen(origin.url, origin.name);
+      const layout = preserveLayout(file.doc, file.layout, res.graph.doc);
+      const fresh: SkillFile = { ...res.graph, layout };
+      get().setFile(skillId, fresh);
+      const nextOrigin = { ...origin, diskHashes: res.diskHashes };
+      await saveSkill(skillId, fresh, nextOrigin);
+      set({
+        origin: nextOrigin,
+        bridgeStatus: 'saved',
+        bridgeMessage: `Re-imported ${origin.name}/ from disk`,
+      });
+      if (fresh.doc.nodes.some((n) => !layout.nodes[n.id])) await get().relayout();
+    } catch (e) {
+      set({ bridgeStatus: 'error', bridgeMessage: (e as Error).message });
+    }
+  },
+
+  async loadHeatmap() {
+    const { origin } = get();
+    if (!origin) {
+      set({ heatmap: null });
+      return;
+    }
+    try {
+      const res = await bridgeTraces(origin.url, origin.name);
+      const heatmap = res.heatmap ?? {};
+      set({ heatmap: Object.keys(heatmap).length ? heatmap : null });
+    } catch {
+      set({ heatmap: null });
+    }
+  },
+
+  setShowHeatmap(v) {
+    set({ showHeatmap: v });
   },
 
   reorderSiblings(parentId) {

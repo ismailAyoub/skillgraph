@@ -1,0 +1,29 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "rationale": "Moves the conventional-commits documentation into a reference read only when the title must be formatted.",
+    "patch": {
+      "ops": [
+        {
+          "op": "add",
+          "id": null,
+          "node": "{\"id\":\"reference_commit_format\",\"kind\":\"reference\",\"parentId\":null,\"order\":5,\"path\":\"references/commit-format.md\",\"source\":\"inline\",\"body\":\"# Conventional commits\\n\\n`type(scope): subject`\\n\",\"summary\":\"The conventional-commit title grammar.\",\"readWhen\":\"when the PR title must follow conventional commits\"}",
+          "data": null,
+          "edge": null,
+          "parentId": null,
+          "order": null
+        },
+        {
+          "op": "addEdge",
+          "id": null,
+          "node": null,
+          "data": null,
+          "edge": "{\"id\":\"edge_reads_2\",\"kind\":\"reads\",\"source\":\"step_write\",\"target\":\"reference_commit_format\"}",
+          "parentId": null,
+          "order": null
+        }
+      ]
+    }
+  }
+}

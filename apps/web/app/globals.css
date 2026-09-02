@@ -45,6 +45,13 @@ body {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
+/* Heatmap overlay: nodes never visited in eval traces. */
+.sg-node.sg-node-cold {
+  border-style: dashed;
+  border-color: #c8c8c4;
+  opacity: 0.85;
+}
+
 .sg-node-head {
   display: flex;
   align-items: center;

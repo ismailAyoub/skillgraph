@@ -95,3 +95,17 @@ export function bridgeSave(
     body: JSON.stringify({ file, diskHashes, force }),
   });
 }
+
+export interface HeatCell {
+  visits: number;
+  runs: number;
+  ratio: number;
+}
+
+/** Traces collected by `skillgraph eval run --trace`, plus a per-node visit heatmap. */
+export function bridgeTraces(
+  url: string,
+  name: string,
+): Promise<{ traces: unknown[]; heatmap: Record<string, HeatCell> }> {
+  return request(`${url}/api/skills/${encodeURIComponent(name)}/traces`);
+}

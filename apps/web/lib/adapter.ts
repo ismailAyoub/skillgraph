@@ -4,8 +4,20 @@ import { MarkerType } from '@xyflow/react';
 import { estimateHeight, GROUP_PAD, NODE_W } from './layout';
 import { CONTAINER_KINDS_SET } from './nodeMeta';
 
+/** Heatmap overlay data for one node: visit ratio in [0, 1] plus raw counts. null = overlay off. */
+export interface NodeHeat {
+  ratio: number;
+  visits: number;
+  runs: number;
+}
+
 export type SkillRFNode = Node<
-  { node: SkillNode; issues: number; severity: 'error' | 'warning' | 'info' | null },
+  {
+    node: SkillNode;
+    issues: number;
+    severity: 'error' | 'warning' | 'info' | null;
+    heat: NodeHeat | null;
+  },
   'skill' | 'group'
 >;
 export type SkillRFEdge = Edge<{ kind: SkillEdge['kind']; edge: SkillEdge }>;
@@ -73,6 +85,7 @@ export function toFlow(
   layout: Layout,
   selectedId: string | null,
   issuesByNode: Map<string, { count: number; severity: 'error' | 'warning' | 'info' }>,
+  heatmap: Record<string, NodeHeat> | null = null,
 ): { nodes: SkillRFNode[]; edges: SkillRFEdge[] } {
   const boxes = computeBoxes(doc, layout);
   const depth = (n: SkillNode): number => {
@@ -92,11 +105,18 @@ export function toFlow(
     const box = boxes.get(n.id) as Sized;
     const isGroup = CONTAINER_KINDS_SET.has(n.kind);
     const issue = issuesByNode.get(n.id);
+    let heat: NodeHeat | null = null;
+    if (heatmap) {
+      const cell = heatmap[n.id];
+      heat = cell
+        ? { ratio: Math.max(0, Math.min(1, cell.ratio)), visits: cell.visits, runs: cell.runs }
+        : { ratio: 0, visits: 0, runs: 0 };
+    }
     return {
       id: n.id,
       type: isGroup ? 'group' : 'skill',
       position: { x: box.x, y: box.y },
-      data: { node: n, issues: issue?.count ?? 0, severity: issue?.severity ?? null },
+      data: { node: n, issues: issue?.count ?? 0, severity: issue?.severity ?? null, heat },
       parentId: n.parentId ?? undefined,
       extent: n.parentId ? 'parent' : undefined,
       selected: n.id === selectedId,

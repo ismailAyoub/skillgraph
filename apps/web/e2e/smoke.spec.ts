@@ -49,3 +49,30 @@ test('import a SKILL.md and compile it back', async ({ page }) => {
   await expect(page.locator('pre')).toContainText('name: web-design-guidelines');
   await expect(page.locator('pre')).toContainText('## How It Works');
 });
+
+async function newSkill(page: import('@playwright/test').Page, name: string) {
+  await page.goto('/');
+  await page.getByLabel(/name/i).first().fill(name);
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page).toHaveURL(/\/edit\//);
+}
+
+test('the AI tab tells you to set an API key when none is set', async ({ page }) => {
+  await newSkill(page, 'ai-tab-skill');
+  await page.getByRole('button', { name: 'AI', exact: true }).click();
+  await expect(page.getByTestId('ai-no-key')).toContainText('Settings');
+  // Nothing is callable without a key.
+  await expect(page.getByRole('button', { name: 'Review this skill' })).toBeDisabled();
+});
+
+test('settings dialog stores the API key in localStorage', async ({ page }) => {
+  await newSkill(page, 'settings-skill');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByTestId('settings-api-key').fill('sk-test');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('skillgraph:anthropicKey')))
+    .toBe('sk-test');
+  // The header stops nagging once a key is set.
+  await expect(page.getByRole('button', { name: 'Settings' })).not.toContainText('Set API key');
+});

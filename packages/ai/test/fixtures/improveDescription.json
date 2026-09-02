@@ -1,0 +1,8 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "description": "  \"Writes and rewrites pull request descriptions from a diff. Use whenever the user asks for a PR body, a change summary, reviewer notes or a description of what a branch does, even if they never say \"pull request\". Do not use for code review or for multi-PR release notes.\"  ",
+    "reasoning": "The failures clustered on queries that describe a branch without naming a PR, so the trigger clause now covers that category."
+  }
+}

@@ -59,10 +59,13 @@ function CanvasInner() {
     return m;
   }, [lintResult]);
 
+  const heatmap = useEditor((s) => s.heatmap);
+  const showHeatmap = useEditor((s) => s.showHeatmap);
+
   const { nodes, edges } = useMemo(() => {
     if (!file) return { nodes: [] as SkillRFNode[], edges: [] as SkillRFEdge[] };
-    return toFlow(file.doc, file.layout, selectedId, issuesByNode);
-  }, [file, selectedId, issuesByNode]);
+    return toFlow(file.doc, file.layout, selectedId, issuesByNode, showHeatmap ? heatmap : null);
+  }, [file, selectedId, issuesByNode, heatmap, showHeatmap]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange<SkillRFNode>[]) => {

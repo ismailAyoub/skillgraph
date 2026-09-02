@@ -129,3 +129,57 @@ export function Pill({
     <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${cls}`}>{children}</span>
   );
 }
+
+export function Modal({
+  title,
+  onClose,
+  children,
+  footer,
+  width = 440,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+  width?: number;
+}) {
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-close; the dialog itself is focusable
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Escape is handled on the dialog element
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-[12vh]"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        className="w-full rounded-lg border border-[var(--line)] bg-white shadow-xl outline-none"
+        style={{ maxWidth: width }}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose();
+        }}
+      >
+        <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-2.5">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded px-1.5 text-[var(--muted)] hover:bg-neutral-100 hover:text-[var(--ink)]"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        <div className="space-y-3 px-4 py-3 text-xs">{children}</div>
+        {footer && (
+          <div className="flex justify-end gap-2 border-t border-[var(--line)] px-4 py-2.5">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

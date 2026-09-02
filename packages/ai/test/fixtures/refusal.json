@@ -1,0 +1,9 @@
+{
+  "stop_reason": "refusal",
+  "content": [],
+  "parsed_output": null,
+  "stop_details": {
+    "category": "policy",
+    "explanation": "The request asks for disallowed content."
+  }
+}

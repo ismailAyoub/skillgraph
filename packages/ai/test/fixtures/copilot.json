@@ -1,0 +1,20 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "rationale": "Rewrites the instruction in the imperative and adds the reason the length matters.",
+    "patch": {
+      "ops": [
+        {
+          "op": "update",
+          "id": "step_write",
+          "node": null,
+          "data": "{\"instruction\":\"Write a three-sentence summary: what changed, why, and what a reviewer should look at first.\",\"why\":\"Reviewers read the first three sentences and skip the rest.\"}",
+          "edge": null,
+          "parentId": null,
+          "order": null
+        }
+      ]
+    }
+  }
+}

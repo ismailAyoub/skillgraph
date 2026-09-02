@@ -3,7 +3,7 @@
 import type { NodeKind } from '@skillgraph/core';
 import { Handle, type NodeProps, Position } from '@xyflow/react';
 import { memo } from 'react';
-import type { SkillRFNode } from '@/lib/adapter';
+import type { NodeHeat, SkillRFNode } from '@/lib/adapter';
 import {
   ATTACH_KINDS_SET,
   FILE_KINDS_SET,
@@ -12,8 +12,33 @@ import {
   nodeTitle,
 } from '@/lib/nodeMeta';
 
+/** Header tint for the heatmap overlay: grey when never visited, green scaled by visit ratio. */
+export function heatStyle(heat: NodeHeat): {
+  background: string;
+  color: string;
+  title: string;
+  dashed: boolean;
+} {
+  if (heat.visits === 0 || heat.ratio <= 0) {
+    return {
+      background: '#ececea',
+      color: '#8a8a90',
+      title: 'Never visited in eval traces',
+      dashed: true,
+    };
+  }
+  const alpha = 0.18 + 0.72 * heat.ratio;
+  const pct = Math.round(heat.ratio * 100);
+  return {
+    background: `rgba(31, 138, 76, ${alpha.toFixed(2)})`,
+    color: heat.ratio > 0.5 ? '#ffffff' : '#145c33',
+    title: `Visited in ${heat.visits} of ${heat.runs} run(s) (${pct}%)`,
+    dashed: false,
+  };
+}
+
 function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
-  const { node, issues, severity } = data;
+  const { node, issues, severity, heat } = data;
   const meta = KIND_META[node.kind as NodeKind] ?? {
     label: node.kind,
     short: node.kind,
@@ -24,10 +49,12 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
   const isAttach = ATTACH_KINDS_SET.has(node.kind);
   const isEntry = node.kind === 'entry';
   const summary = nodeSummary(node);
+  const hs = heat ? heatStyle(heat) : null;
   return (
     <div
-      className={`sg-node ${selected ? 'selected' : ''}`}
-      style={{ borderLeft: `4px solid ${meta.color}` }}
+      className={`sg-node ${selected ? 'selected' : ''} ${hs?.dashed ? 'sg-node-cold' : ''}`}
+      style={{ borderLeft: `4px solid ${hs ? (hs.dashed ? '#c8c8c4' : '#1f8a4c') : meta.color}` }}
+      title={hs?.title}
     >
       {!isEntry && !isFile && (
         <Handle
@@ -53,8 +80,20 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
           style={{ background: '#c53030', width: 6, height: 6, top: '70%' }}
         />
       )}
-      <div className="sg-node-head" style={{ background: meta.bg, color: meta.color }}>
+      <div
+        className="sg-node-head"
+        style={
+          hs
+            ? { background: hs.background, color: hs.color }
+            : { background: meta.bg, color: meta.color }
+        }
+      >
         <span>{meta.short}</span>
+        {hs && (
+          <span className="normal-case tracking-normal opacity-90">
+            {heat && heat.visits > 0 ? `${Math.round(heat.ratio * 100)}%` : 'never visited'}
+          </span>
+        )}
         {issues > 0 && (
           <span
             className={`ml-auto rounded-full px-1.5 text-[10px] ${severity === 'error' ? 'bg-red-600 text-white' : severity === 'warning' ? 'bg-amber-500 text-white' : 'bg-neutral-300 text-neutral-800'}`}
@@ -96,16 +135,20 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
 export const SkillNode = memo(SkillNodeComponent);
 
 function GroupNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
-  const { node, issues, severity } = data;
+  const { node, issues, severity, heat } = data;
   const meta = KIND_META[node.kind as NodeKind];
   const title =
     node.kind === 'loop'
       ? `Repeat until ${(node as { until: string }).until || '…'}`
       : nodeTitle(node);
+  const hs = heat ? heatStyle(heat) : null;
   return (
     <div
       className={`sg-group h-full w-full ${selected ? 'selected' : ''}`}
-      style={{ borderColor: selected ? undefined : meta.color }}
+      style={{
+        borderColor: selected ? undefined : hs ? (hs.dashed ? '#c8c8c4' : '#1f8a4c') : meta.color,
+      }}
+      title={hs?.title}
     >
       <Handle
         id="in"

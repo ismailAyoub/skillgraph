@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "skillgraph": {
+      "command": "pnpm",
+      "args": ["--filter", "skillgraph", "exec", "tsx", "src/index.ts", "mcp"]
+    }
+  }
+}

@@ -4,10 +4,11 @@ import { Ctx, toMermaid } from '@skillgraph/core';
 import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { AiPanel } from '@/components/ai/AiPanel';
 import { Button, Pill, Tabs } from '@/components/ui';
 import { useEditor } from '@/lib/store';
 
-type Tab = 'rendered' | 'raw' | 'files' | 'lint' | 'diagram';
+type Tab = 'rendered' | 'raw' | 'files' | 'lint' | 'diagram' | 'ai';
 
 export function Preview() {
   const compiled = useEditor((s) => s.compiled);
@@ -43,6 +44,7 @@ export function Preview() {
             ),
           },
           { id: 'diagram', label: 'Diagram' },
+          { id: 'ai', label: 'AI' },
         ]}
       />
       <div className="min-h-0 flex-1 overflow-auto">
@@ -94,6 +96,7 @@ export function Preview() {
             ))}
           </div>
         )}
+        {tab === 'ai' && <AiPanel />}
         {tab === 'diagram' && (
           <div className="p-3">
             <div className="mb-2 flex items-center gap-2 text-[11px] text-[var(--muted)]">

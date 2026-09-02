@@ -1,0 +1,18 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "expectations": [
+      {
+        "text": "The summary names every changed file.",
+        "passed": true,
+        "evidence": "The output lists src/a.ts and src/b.ts."
+      },
+      {
+        "text": "The summary is under 200 words.",
+        "passed": false,
+        "evidence": "The output is 340 words."
+      }
+    ]
+  }
+}

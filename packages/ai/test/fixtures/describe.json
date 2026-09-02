@@ -1,0 +1,38 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "candidates": [
+      {
+        "description": "Guides writing pull request descriptions. Use when the user asks for a PR summary.",
+        "rationale": "Outcome-led: shortest, but weakest on near-misses."
+      },
+      {
+        "description": "Use this skill whenever a diff needs a human-readable summary, including changelog entries.",
+        "rationale": "Situation-led: triggers more broadly."
+      },
+      {
+        "description": "Writes PR descriptions. Do not use for code review or for release notes across many PRs.",
+        "rationale": "Contrast-led: best separation from adjacent skills."
+      }
+    ],
+    "triggerQueries": [
+      {
+        "query": "can you write the PR description for this branch, i already pushed it",
+        "should_trigger": true
+      },
+      {
+        "query": "summarise what changed in this diff for the reviewers",
+        "should_trigger": true
+      },
+      {
+        "query": "review this PR and tell me if the logic is right",
+        "should_trigger": false
+      },
+      {
+        "query": "draft the release notes for v2.3 across all merged PRs",
+        "should_trigger": false
+      }
+    ]
+  }
+}

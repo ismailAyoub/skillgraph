@@ -11,3 +11,4 @@ minimumReleaseAgeExclude:
   - '@xyflow/react@12.11.6'
   - '@xyflow/system@0.0.82'
   - lucide-react@1.39.0
+  - '@anthropic-ai/sdk@0.123.0'

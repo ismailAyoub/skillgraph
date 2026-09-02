@@ -1,11 +1,15 @@
 import { Command } from 'commander';
+import { registerAiCommand } from './commands/ai';
 import { compileCommand } from './commands/compile';
 import { devCommand } from './commands/dev';
-import { exportCommand } from './commands/export';
+import { registerEvalCommand } from './commands/eval';
+import { registerExportCommand } from './commands/export';
 import { importCommand } from './commands/import';
 import { initCommand } from './commands/init';
 import { lintCommand } from './commands/lint';
+import { registerMcpCommand } from './commands/mcp';
 import { mermaidCommand } from './commands/mermaid';
+import { registerPublishCommand } from './commands/publish';
 
 const program = new Command();
 program
@@ -38,14 +42,6 @@ program
   .action((dir, opts) => process.exit(importCommand({ dir, ...opts })));
 
 program
-  .command('export')
-  .argument('<dir>', 'skill folder')
-  .option('-z, --zip <file>', 'zip path (default: <name>.zip)')
-  .option('-c, --clean', 'omit SKILL.graph.json (for claude.ai upload)')
-  .option('-p, --profile <profile>', 'universal | claude-code')
-  .action((dir, opts) => process.exit(exportCommand({ dir, ...opts })));
-
-program
   .command('init')
   .argument('<name>', 'skill name (kebab-case)')
   .option('-d, --description <text>', 'description (what + when)')
@@ -63,5 +59,11 @@ program
   .command('mermaid')
   .argument('<dir>', 'skill folder')
   .action((dir) => process.exit(mermaidCommand({ dir })));
+
+registerExportCommand(program);
+registerPublishCommand(program);
+registerMcpCommand(program);
+registerEvalCommand(program);
+registerAiCommand(program);
 
 program.parseAsync(process.argv);

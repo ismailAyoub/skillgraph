@@ -18,7 +18,9 @@ pnpm workspaces plus turborepo, TypeScript strict, biome, vitest. Node 22 or new
 |---|---|---|
 | `packages/core` | `@skillgraph/core` | Zod schema (`schema/graph.ts`), `GraphPatch` apply/invert (`patch/`), compiler (`compiler/`), decompiler (`decompiler/`), linter (`lint/`), Markdown normalizer, token estimator. Pure TypeScript, runs in Node and the browser. |
 | `packages/cli` | `skillgraph` | `commander` CLI over core: `init`, `import`, `compile`, `lint`, `export`, `mermaid`. |
-| `apps/web` | `@skillgraph/web` | Next.js editor (React Flow canvas, CodeMirror inspector, live preview). Scaffold only today; see the roadmap. |
+| `packages/ai` | `@skillgraph/ai` | AI features over the Anthropic API; every result is a validated `GraphPatch` proposal. Browser and Node. |
+| `apps/web` | `@skillgraph/web` | Next.js editor: React Flow canvas, inspector, live preview, lint panel, AI tab, heatmap overlay, export menu. |
+| `skills/skillgraph-authoring` | | Meta-skill for Claude Code, authored as a graph and compiled by SkillGraph. |
 | `fixtures/` | | Vendored real-world skills used as round-trip test inputs (`idea-refine`, `web-design-guidelines`, `supabase-postgres-best-practices`, `vercel-react-best-practices`, `skill-creator`; licenses in `fixtures/NOTICE.md`). |
 | `docs/graph-spec.md` | | The graph specification: file format, every node and edge kind, compile rules, overrides, decompiler recognizers, fidelity report, lint rules. |
 
@@ -36,7 +38,7 @@ The CLI is not published yet. Run it from the workspace, either through the buil
 
 ```bash
 node packages/cli/bin/skillgraph.js --help          # after pnpm build
-pnpm --filter skillgraph dev -- --help              # no build needed
+pnpm --filter skillgraph exec tsx src/index.ts --help   # no build needed
 ```
 
 ### CLI
@@ -61,6 +63,9 @@ skillgraph export <dir> [-z, --zip <file>] [-c, --clean] [-p, --profile <profile
 
 skillgraph mermaid <dir>
     Print a `flowchart TD` of the skill to stdout.
+
+skillgraph publish | mcp | ai <subcommand> | eval <subcommand>
+    See the sections below.
 ```
 
 Typical loop for an existing skill:
@@ -82,22 +87,16 @@ compile(decompile(md)).skillMd === normalizeMd(md)
 
 Every other text file in the folder survives byte for byte, and compiling the decompiled graph again is a fixed point. `pnpm test` checks this over `fixtures/*` and, when present, over every skill in `~/.claude/skills`. Unrecognized prose is kept in `raw_markdown` nodes, so nothing is dropped; the fidelity report says what was recognized, what was guessed, and what stayed raw. Compiled files carry content hashes in `SKILL.graph.json`, so hand edits to `SKILL.md` are detected and never silently overwritten.
 
-## Roadmap
+## Status
 
-M0 (scaffold) and M1 (core schema, compiler, decompiler, linter, CLI) are what exists today.
-
-| Milestone | Scope |
+| Milestone | State |
 |---|---|
-| M2 Editor MVP | React Flow canvas with nested phase/loop groups, palette, inspector, elk auto-layout, compile in a worker with live preview, budget meter and lint panel, undo/redo via inverse patches, `skillgraph dev` local bridge to `~/.claude/skills` with IndexedDB fallback, drag-drop import, zip export, Vercel deploy. No AI. |
-| M3 Import and sync | Full recognizer set, fidelity report and drift UI ("re-import vs overwrite"), MCP server (`graph.get`, `graph.apply_patch`, `graph.compile`, `graph.lint`, `graph.import`, `skill.export`) plus a meta-skill so Claude Code can build graphs with the same `GraphPatch` contract. |
-| M4 AI assist | `packages/ai`: interview to graph, node copilot, critique pass, description composer, transcript to skill, docs to references, AI decompile fallback for raw chunks. BYO Anthropic API key; AI patches are proposals until accepted. |
-| M5 Evals | Trigger evals and description optimizer via `claude -p`, task evals with and without the skill, grader, skill-creator compatible `benchmark.json`, execution-trace overlay and coverage heatmap on the canvas. |
-| M6 Distribution and hosted | Plugin and marketplace scaffold, Skills API upload, GitHub export, Codex/Cursor/Gemini profiles, template gallery, hosted accounts with cloud save and share links. |
-
-## License
-
-MIT for the SkillGraph packages. Vendored fixtures keep their own licenses (see `fixtures/NOTICE.md`).
-
+| M0 Scaffold, M1 Core + CLI | Done. Byte-for-byte round trip over the fixtures and 31 local skills. |
+| M2 Editor MVP | Done. React Flow canvas, inspector, live preview, lint panel, undo/redo, local bridge, zip export, Vercel deploy. |
+| M3 Import and sync | Done. Fidelity report, drift protection with a "re-import vs overwrite" modal, MCP server plus the `skillgraph-authoring` meta-skill. |
+| M4 AI assist | Done. `@skillgraph/ai`: critique, description composer, trigger-query generator, node copilot, interview to graph, transcript to skill, docs to references, import fallback. Web AI tab and `skillgraph ai`. BYO Anthropic key; every AI result is a proposal until you apply it. |
+| M5 Evals | Done. `skillgraph eval`: trigger evals and description optimizer via `claude -p`, task evals with and without the skill, grader, skill-creator compatible `benchmark.json`, execution traces and a coverage heatmap on the canvas. |
+| M6 Distribution | Done except hosted accounts. Export as zip, `.skill`, Claude Code plugin (with marketplace manifest) or `skills/` repo; `skillgraph publish` uploads to the Anthropic Skills API; template gallery with nine genres. Hosted accounts with cloud save and share links are not built; the app stays local-first. Codex, Cursor and Gemini consume the `universal` profile, so they have no separate profile. |
 
 ## Web editor
 
@@ -117,3 +116,79 @@ pnpm --filter skillgraph dev dev --dir ~/.claude/skills --port 4321
 ```
 
 The bridge is a small HTTP API (`/api/health`, `/api/skills`, `/api/skills/:name` GET and PUT) that only listens on 127.0.0.1.
+
+### AI tab (bring your own key)
+
+Open Settings in the editor header, paste an Anthropic API key and pick a model. The key stays in this browser's localStorage and is sent only to this app's `/api/ai/*` route handlers, one request at a time; the server never stores or logs it. The AI tab in the right-hand panel then offers:
+
+- **Critique**: findings pinned to nodes, each with an optional patch you can apply one by one or all at once.
+- **Describe**: description candidates with rationale plus 20 trigger queries (should-trigger and near-miss negatives) ready for `skillgraph eval triggers`.
+- **Copilot**: rewrite the selected node (imperative voice, add a why, split steps, draft a reference or script, tighten, or a custom instruction).
+- **Interview**: one question at a time in skill-creator's order (what, when, output format, tests); each answer becomes a patch you can undo.
+- **Import**: paste a Claude Code transcript to extract a skill, or recover `raw_markdown` nodes left over from an import.
+
+Every AI result is a `GraphPatch` proposal validated against the graph before you see it; applying it goes through the normal undo history. Nothing runs scripts or `!` commands.
+
+### Heatmap
+
+After `skillgraph eval run --trace` has written traces under `evals/traces/`, open the skill through the local bridge and toggle Heatmap: nodes are tinted by how often the recorded runs visited them. Never-visited nodes are the first candidates to cut.
+
+## AI assist from the CLI
+
+`skillgraph ai` needs `ANTHROPIC_API_KEY` (or `--key`). Every subcommand prints its proposal; `--apply` writes it to `SKILL.graph.json` and recompiles.
+
+```text
+skillgraph ai critique <dir> [--json] [--apply]
+skillgraph ai describe <dir> [--json] [--pick <n>]          # candidates + evals/trigger-queries.json
+skillgraph ai queries <dir> [-o file] [--count 20]
+skillgraph ai copilot <dir> --node <id> --intent <rewrite-imperative|add-why|split-steps|draft-reference|draft-script|tighten|custom> [--instruction <text>] [--apply]
+skillgraph ai interview <dir>                                # interactive; /quit to stop
+skillgraph ai from-transcript <dir> <file> [--apply]
+skillgraph ai import-fallback <dir> [--apply]
+```
+
+## Evals
+
+`skillgraph eval` runs the local `claude` CLI in a throwaway project that contains only the compiled skill, so results reflect what Claude Code actually does. File shapes match Anthropic's skill-creator (`evals/evals.json`, `grading.json`, `benchmark.json`), so its viewer works on the output.
+
+```text
+skillgraph eval queries <dir> [--count 20]                   # AI-generated trigger queries
+skillgraph eval triggers <dir> [--queries f] [--runs 3] [--concurrency 4] [--description text]
+skillgraph eval optimize <dir> [--max-iterations 5] [--runs 3] [--apply]   # 60/40 train/test split
+skillgraph eval run <dir> [--evals f] [--runs 1] [--no-baseline] [--trace] [--ai-align]
+skillgraph eval heatmap <dir> [--json]
+```
+
+A trigger run counts a query as triggered when the transcript contains a `Skill` tool call naming the skill; majority vote over `--runs`. Runs that fail (expired `claude` login, timeout) are reported as errors, never as "no trigger". Task evals write `evals/runs/<timestamp>/eval-<id>/{with_skill,without_skill}/run-<n>/` with `transcript.md`, `outputs/`, `metrics.json`, `timing.json` and `grading.json`, then `benchmark.json` and `benchmark.md` at the run root.
+
+## MCP server and the meta-skill
+
+`skillgraph mcp [--dir ~/.claude/skills]` serves the graph over stdio so Claude Code can build skills with the same `GraphPatch` contract the editor uses: `graph_get`, `graph_apply_patch`, `graph_compile`, `graph_lint`, `graph_import`, `graph_init`, `skill_export`, `graph_vocabulary`, plus the `skillgraph://vocabulary` resource. Writes go through the same drift protection as `compile`. The repo's `.mcp.json` points Claude Code at the workspace copy; for an installed CLI use:
+
+```json
+{ "mcpServers": { "skillgraph": { "command": "npx", "args": ["-y", "skillgraph", "mcp"] } } }
+```
+
+`skills/skillgraph-authoring/` is the companion skill that teaches Claude Code the node vocabulary and the patch workflow. It is authored as a graph and compiled by SkillGraph itself; copy the folder into `~/.claude/skills/` to use it.
+
+## Distribution
+
+```text
+skillgraph export <dir> --format zip          # skill folder + SKILL.graph.json
+skillgraph export <dir> --format skill        # clean universal package for claude.ai
+skillgraph export <dir> --format plugin --out-dir ./my-plugin [--plugin-name n] [--version v] [--author a]
+skillgraph export <dir> --format skills-repo --out-dir ./my-skills     # for `npx skills add`
+skillgraph publish <dir> [--display-name n] [--version-of <skillId>] [--dry-run] [--force]
+```
+
+The plugin layout carries `.claude-plugin/plugin.json` and a one-plugin `marketplace.json`, so the folder works with `claude --plugin-dir` and as a marketplace source. `publish` compiles with the universal profile, refuses on lint errors unless `--force`, and uses the Anthropic Skills API (`ANTHROPIC_API_KEY` or `--key`). The editor's Export menu offers the same four formats.
+
+## Development notes
+
+- `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test` and `pnpm --filter @skillgraph/web e2e` are what CI runs (`.github/workflows/ci.yml`).
+- Run the unbuilt CLI with `pnpm --filter skillgraph exec tsx src/index.ts <command> ...`. The `pnpm ... dev -- <command>` form forwards a literal `--`, which makes commander read flags as positional arguments.
+- AI features are tested against recorded responses only; nothing in the test suite talks to the network or spawns the real `claude` binary (`SKILLGRAPH_CLAUDE_BIN` points the eval runner at a fake).
+
+## License
+
+MIT for the SkillGraph packages. Vendored fixtures keep their own licenses (see `fixtures/NOTICE.md`).

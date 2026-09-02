@@ -12,7 +12,8 @@
       "!**/.next",
       "!**/fixtures",
       "!**/node_modules",
-      "!**/test/golden/**/*.md"
+      "!**/test/golden/**/*.md",
+      "!**/next-env.d.ts"
     ]
   },
   "formatter": {
@@ -24,7 +25,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
         "noExplicitAny": "warn"
       }

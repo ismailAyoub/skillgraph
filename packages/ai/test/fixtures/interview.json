@@ -1,0 +1,23 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "question": "What should happen when the diff touches more than twenty files?",
+    "patch": {
+      "ops": [
+        {
+          "op": "add",
+          "id": null,
+          "node": "{\"id\":\"guardrail_no_invention\",\"kind\":\"guardrail\",\"parentId\":null,\"order\":4,\"polarity\":\"dont\",\"text\":\"Don't describe changes you have not read in the diff.\",\"why\":\"Invented summaries send reviewers looking for code that is not there.\"}",
+          "data": null,
+          "edge": null,
+          "parentId": null,
+          "order": null
+        }
+      ]
+    },
+    "rationale": "The user said reviewers were misled by invented summaries.",
+    "confidence": 0.62,
+    "done": false
+  }
+}
