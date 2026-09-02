@@ -13,6 +13,19 @@ export async function GET(request: Request): Promise<Response> {
   const next = safeNext(url.searchParams.get('next'));
   const sb = await supabaseServer();
   if (!sb) return NextResponse.redirect(new URL('/login?error=accounts-disabled', url.origin));
+  // Custom email templates can link straight here with token_hash + type (recommended for SSR).
+  const tokenHash = url.searchParams.get('token_hash');
+  const type = url.searchParams.get('type');
+  if (tokenHash && type) {
+    const { error } = await sb.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: type as 'signup' | 'magiclink' | 'recovery' | 'invite' | 'email_change' | 'email',
+    });
+    if (!error) return NextResponse.redirect(new URL(next, url.origin));
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(error.message)}`, url.origin),
+    );
+  }
   if (code) {
     const { error } = await sb.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(new URL(next, url.origin));

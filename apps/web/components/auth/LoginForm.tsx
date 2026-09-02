@@ -9,6 +9,7 @@ import { Button, Field, Input, Tabs } from '@/components/ui';
 import {
   ACCOUNTS_ENABLED,
   type OAuthProvider,
+  resendConfirmation,
   signInWithMagicLink,
   signInWithOAuth,
   signInWithPassword,
@@ -277,6 +278,18 @@ export function LoginForm() {
             }`}
           >
             {notice.text}
+            {/not confirmed/i.test(notice.text) && (
+              <button
+                type="button"
+                className="ml-2 underline"
+                onClick={async () => {
+                  const r = await resendConfirmation(email.trim(), next);
+                  setNotice({ tone: r.ok ? 'ok' : 'err', text: r.message ?? '' });
+                }}
+              >
+                Resend confirmation email
+              </button>
+            )}
           </p>
         )}
 

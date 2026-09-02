@@ -77,6 +77,20 @@ export async function signInWithOAuth(provider: OAuthProvider, next = '/app'): P
   return error ? { ok: false, message: error.message } : { ok: true };
 }
 
+/** Send the sign-up confirmation email again (single-use links get consumed by mail scanners). */
+export async function resendConfirmation(email: string, next = '/app'): Promise<AuthResult> {
+  const sb = supabaseBrowser();
+  if (!sb) return { ok: false, message: 'Accounts are not enabled on this deployment.' };
+  const { error } = await sb.auth.resend({
+    type: 'signup',
+    email,
+    options: { emailRedirectTo: callbackUrl(next) },
+  });
+  return error
+    ? { ok: false, message: error.message }
+    : { ok: true, message: 'Sent a new confirmation email.' };
+}
+
 export async function signOut(): Promise<void> {
   const sb = supabaseBrowser();
   if (sb) await sb.auth.signOut();
