@@ -37,9 +37,14 @@ function need() {
 }
 
 export async function listCloudSkills(): Promise<CloudSkillRow[]> {
-  const { data, error } = await need()
+  const sb = need();
+  // Public skills are readable by everyone under RLS; the dashboard must list only the owner's rows.
+  const { data: auth } = await sb.auth.getUser();
+  if (!auth.user) return [];
+  const { data, error } = await sb
     .from('skills')
     .select(COLS)
+    .eq('owner', auth.user.id)
     .order('updated_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as CloudSkillRow[];
