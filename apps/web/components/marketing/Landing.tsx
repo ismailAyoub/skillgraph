@@ -288,6 +288,12 @@ export function Landing() {
             <span>MIT license</span>
           </div>
           <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
+            <a href="/privacy" className="transition hover:text-[var(--ink)]">
+              Privacy
+            </a>
+            <a href="/terms" className="transition hover:text-[var(--ink)]">
+              Terms
+            </a>
             <a href="#how" className="transition hover:text-[var(--ink)]">
               How it works
             </a>
