@@ -3,6 +3,15 @@ import { expect, test } from '@playwright/test';
 
 const FIXTURE = resolve(__dirname, '../../../fixtures/web-design-guidelines/SKILL.md');
 
+// A developer's own `skillgraph dev` bridge on 127.0.0.1:4321 would make AI "connected" and change
+// what the tests see, so point the app at a dead port for the whole suite.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('skillgraph:bridgeUrl'))
+      localStorage.setItem('skillgraph:bridgeUrl', 'http://127.0.0.1:1');
+  });
+});
+
 test('create a skill from a template, edit it, and see the compiled preview', async ({ page }) => {
   await page.goto('/app');
   await page.getByLabel(/name/i).first().fill('smoke-skill');
@@ -95,7 +104,9 @@ test('Connect AI dialog stores the API key in localStorage', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'AI setup' })).not.toContainText('Connect AI');
 });
 
-test('dashboard chat card opens the editor with the first message queued', async ({ page }) => {
+test('dashboard chat drafts the skill and Create skill opens the editor on that chat', async ({
+  page,
+}) => {
   await page.goto('/app');
   const card = page.getByTestId('ai-start');
   await expect(card).toContainText('Build a skill by chatting');
@@ -105,7 +116,8 @@ test('dashboard chat card opens the editor with the first message queued', async
   await expect(page.getByRole('dialog', { name: 'Connect AI' })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  // With a key set, describing a skill lands in the editor on the chat with that message.
+  // With a key set, the first message starts the chat on the dashboard. The fake key makes the
+  // call fail, which the chat shows inline; the draft exists anyway.
   await page.evaluate(() => {
     localStorage.setItem('skillgraph:anthropicKey', 'sk-test');
     localStorage.setItem('skillgraph:aiBackend', 'api');
@@ -114,6 +126,13 @@ test('dashboard chat card opens the editor with the first message queued', async
   await expect(card.getByTestId('ai-start-connect')).toHaveCount(0);
   await card.getByTestId('ai-start-text').fill('Review a pull request against our house style');
   await card.getByTestId('ai-start-go').click();
+  const chat = card.getByTestId('ai-start-chat');
+  await expect(chat).toContainText('Review a pull request against our house style');
+  await expect(chat).toContainText(/key|invalid|error/i);
+  await expect(card).toContainText('review-pull-request-house');
+
+  // Create skill saves the draft and opens the editor with the conversation in the AI panel.
+  await card.getByTestId('ai-start-create').click();
   await expect(page).toHaveURL(/\/edit\//, { timeout: 60_000 });
   await expect(page.locator('header')).toContainText('review-pull-request-house');
   await expect(page.getByRole('button', { name: 'Open AI chat' })).toHaveAttribute(

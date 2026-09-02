@@ -1,12 +1,15 @@
 'use client';
 
-import { slugify } from '@skillgraph/core';
-import { Check, MessageSquareText, Sparkles } from 'lucide-react';
+import type { InterviewStep, InterviewTurn } from '@skillgraph/ai';
+import { applyPatch, compile, type SkillFile, slugify } from '@skillgraph/core';
+import { ArrowRight, Check, MessageSquareText, RotateCcw, Sparkles } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { Busy, ErrorNote } from '@/components/ai/common';
 import { aiStatusLabel, SettingsDialog } from '@/components/SettingsDialog';
-import { Button, TextArea } from '@/components/ui';
+import { Button, Pill, TextArea } from '@/components/ui';
+import { callAi } from '@/lib/ai';
 import { saveSkill } from '@/lib/db';
 import { setKickoff } from '@/lib/kickoff';
 import { TEMPLATES } from '@/lib/templates';
@@ -37,34 +40,98 @@ export function nameFromDescription(text: string): string {
   return slug === 'item' ? 'new-skill' : slug;
 }
 
+function blankSkill(name: string): SkillFile {
+  const blank = TEMPLATES.find((t) => t.id === 'blank') ?? TEMPLATES[0];
+  if (!blank) throw new Error('no template');
+  return blank.build(name);
+}
+
+/** What the draft contains so far, for the pills next to "Create skill". */
+function draftSummary(file: SkillFile): {
+  name: string;
+  lines: number;
+  phases: number;
+  steps: number;
+} {
+  const entry = file.doc.nodes.find((n) => n.kind === 'entry') as { name: string } | undefined;
+  return {
+    name: entry?.name ?? 'skill',
+    lines: compile(file.doc).report.lines,
+    phases: file.doc.nodes.filter((n) => n.kind === 'phase').length,
+    steps: file.doc.nodes.filter((n) => n.kind === 'step').length,
+  };
+}
+
 /**
- * Dashboard entry point: describe the skill in a sentence, and the editor opens with the chat
- * already running on that sentence. The graph is built by the interview, one answer at a time.
+ * Dashboard chat: Claude interviews you here, one question at a time, and builds the skill graph
+ * in memory as you answer. "Create skill" saves that draft and opens the editor on it, with the
+ * conversation carried along so you can keep going there.
  */
 export function AiStart() {
   const router = useRouter();
   const { effective } = useAiSettings();
   const setupOpen = useUi((s) => s.aiSetupOpen);
   const setSetupOpen = useUi((s) => s.setAiSetupOpen);
-  const [text, setText] = useState('');
+  const [file, setFile] = useState<SkillFile | null>(null);
+  const [turns, setTurns] = useState<InterviewTurn[]>([]);
+  const [step, setStep] = useState<InterviewStep | null>(null);
+  const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
-  const ready = text.trim().length > 0;
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const start = async () => {
-    const message = text.trim();
-    if (!message || busy) return;
+  const started = turns.length > 0;
+  const done = step?.done === true;
+
+  const send = async () => {
+    const text = draft.trim();
+    if (!text || busy) return;
     if (!effective) {
       setSetupOpen(true);
       return;
     }
+    // The first message names the skill; the interview may rename it later through a patch.
+    const current = file ?? blankSkill(nameFromDescription(text));
+    const transcript: InterviewTurn[] = [...turns, { role: 'user', content: text }];
+    setFile(current);
+    setTurns(transcript);
+    setDraft('');
     setBusy(true);
-    const blank = TEMPLATES.find((t) => t.id === 'blank') ?? TEMPLATES[0];
-    if (!blank) return;
+    setError(null);
+    try {
+      const result = await callAi('interview', { doc: current.doc, transcript });
+      const next = result.patch
+        ? { ...current, doc: applyPatch(current.doc, result.patch).doc }
+        : current;
+      setFile(next);
+      setStep(result);
+      if (result.question)
+        setTurns([...transcript, { role: 'assistant', content: result.question }]);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const create = async () => {
+    if (!file || creating) return;
+    setCreating(true);
     const id = nanoid(10);
-    await saveSkill(id, blank.build(nameFromDescription(message)));
-    setKickoff(id, message);
+    await saveSkill(id, file);
+    setKickoff(id, { turns, step });
     router.push(`/edit/${id}`);
   };
+
+  const restart = () => {
+    setFile(null);
+    setTurns([]);
+    setStep(null);
+    setDraft('');
+    setError(null);
+  };
+
+  const summary = file ? draftSummary(file) : null;
 
   return (
     <section
@@ -94,42 +161,113 @@ export function AiStart() {
           )}
         </span>
       </div>
-      <p className="mb-3 text-[11px] text-[var(--muted)]">
-        Say what the skill should do. Claude asks a few questions, one at a time, and draws the
-        graph as you answer. You can edit every node afterwards, and every AI edit is undoable.
-      </p>
-      <TextArea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void start();
-        }}
-        placeholder={`e.g. ${EXAMPLES[0]}`}
-        aria-label="Describe the skill you want"
-        data-testid="ai-start-text"
-        rows={3}
-      />
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <Button
-          variant="primary"
-          onClick={() => void start()}
-          disabled={!ready || busy}
-          data-testid="ai-start-go"
-          title={effective ? 'Open the editor and start the chat (⌘⏎)' : 'Connect AI first'}
+      {!started && (
+        <p className="mb-3 text-[11px] text-[var(--muted)]">
+          Say what the skill should do. Claude asks a few questions, one at a time, and drafts the
+          skill as you answer. When it has enough, press Create skill to open the draft in the
+          editor, where every node is yours to change.
+        </p>
+      )}
+
+      {started && (
+        <div
+          className="mb-2 max-h-[360px] space-y-1.5 overflow-y-auto text-xs"
+          data-testid="ai-start-chat"
         >
-          <Sparkles size={14} /> {busy ? 'Opening…' : 'Start chatting'}
-        </Button>
-        <span className="text-[11px] text-[var(--muted)]">Try:</span>
-        {EXAMPLES.map((ex) => (
-          <button
-            key={ex}
-            type="button"
-            onClick={() => setText(ex)}
-            className="rounded-full border border-[var(--line)] px-2 py-0.5 text-[11px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]"
+          {turns.map((t, i) => (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: turns are append-only
+              key={i}
+              className={`max-w-[85%] rounded-lg border px-3 py-2 leading-snug ${
+                t.role === 'assistant'
+                  ? 'border-[var(--line)] bg-neutral-50'
+                  : 'ml-auto border-transparent bg-[var(--accent-soft)] text-[var(--accent)]'
+              }`}
+            >
+              {t.content}
+            </div>
+          ))}
+          {busy && <Busy label="Thinking…" />}
+          <ErrorNote error={error} />
+          {done && (
+            <div className="rounded-lg border border-[var(--ok)] bg-green-50 px-3 py-2 leading-snug text-green-800">
+              The draft is ready. Create the skill to see it on the canvas and refine it there.
+            </div>
+          )}
+        </div>
+      )}
+
+      {!done && (
+        <TextArea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void send();
+          }}
+          placeholder={started ? 'Your answer… (⌘⏎ to send)' : `e.g. ${EXAMPLES[0]}`}
+          aria-label={started ? 'Your answer' : 'Describe the skill you want'}
+          data-testid="ai-start-text"
+          rows={started ? 2 : 3}
+          disabled={busy}
+        />
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {!done && (
+          <Button
+            variant={started ? 'default' : 'primary'}
+            onClick={() => void send()}
+            disabled={!draft.trim() || busy}
+            data-testid="ai-start-go"
+            title={effective ? 'Send (⌘⏎)' : 'Connect AI first'}
           >
-            {ex.length > 48 ? `${ex.slice(0, 46)}…` : ex}
-          </button>
-        ))}
+            <Sparkles size={14} /> {started ? 'Send' : 'Start chatting'}
+          </Button>
+        )}
+        {started && file && (
+          <Button
+            variant={done ? 'primary' : started ? 'default' : 'primary'}
+            onClick={() => void create()}
+            disabled={busy || creating}
+            data-testid="ai-start-create"
+            title="Save the draft and open it in the editor"
+          >
+            {creating ? 'Opening…' : 'Create skill'} <ArrowRight size={14} />
+          </Button>
+        )}
+        {started && (
+          <Button variant="ghost" onClick={restart} title="Discard this draft and start over">
+            <RotateCcw size={13} /> Start over
+          </Button>
+        )}
+        {summary && (
+          <span className="flex items-center gap-1 text-[11px] text-[var(--muted)]">
+            <span className="font-mono">{summary.name}</span>
+            <Pill>{summary.lines} lines</Pill>
+            {summary.phases > 0 && <Pill tone="accent">{summary.phases} phases</Pill>}
+            {summary.steps > 0 && <Pill tone="accent">{summary.steps} steps</Pill>}
+            {step && !done && (
+              <Pill tone={step.confidence >= 0.7 ? 'ok' : 'warn'}>
+                {Math.round(step.confidence * 100)}% there
+              </Pill>
+            )}
+          </span>
+        )}
+        {!started && (
+          <>
+            <span className="text-[11px] text-[var(--muted)]">Try:</span>
+            {EXAMPLES.map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => setDraft(ex)}
+                className="rounded-full border border-[var(--line)] px-2 py-0.5 text-[11px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--ink)]"
+              >
+                {ex.length > 48 ? `${ex.slice(0, 46)}…` : ex}
+              </button>
+            ))}
+          </>
+        )}
       </div>
       {setupOpen && <SettingsDialog onClose={() => setSetupOpen(false)} />}
     </section>

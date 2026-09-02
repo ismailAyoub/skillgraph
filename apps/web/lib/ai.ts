@@ -100,7 +100,13 @@ export async function callAi<F extends AiFeature>(
       signal,
     });
   } catch (e) {
-    throw new AiClientError((e as Error).message || 'Network error', 'network');
+    const why = (e as Error).message || 'Network error';
+    throw new AiClientError(
+      target === 'bridge'
+        ? `Could not reach the local bridge at ${getBridgeUrl()} (${why}). Is \`skillgraph dev\` still running?`
+        : why,
+      'network',
+    );
   }
   let body: { ok: boolean; result?: unknown; error?: string; code?: string };
   try {

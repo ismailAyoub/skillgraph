@@ -21,7 +21,7 @@ const VERSION = '0.1.0';
 function cors(res: ServerResponse): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'content-type');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type, x-anthropic-key, x-anthropic-model');
   res.setHeader('Access-Control-Allow-Private-Network', 'true');
 }
 

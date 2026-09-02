@@ -28,8 +28,6 @@ export interface AiPanelState {
   interviewTurns: InterviewTurn[];
   interviewStep: InterviewStep | null;
   interviewDraft: string;
-  /** A first user turn is queued (from the dashboard card) and should be sent as soon as AI is available. */
-  interviewPending: boolean;
   transcript: string;
   importProposal: Proposal | null;
   recovery: Proposal | null;
@@ -50,7 +48,6 @@ const EMPTY = {
   interviewTurns: [] as InterviewTurn[],
   interviewStep: null,
   interviewDraft: '',
-  interviewPending: false,
   transcript: '',
   importProposal: null,
   recovery: null,

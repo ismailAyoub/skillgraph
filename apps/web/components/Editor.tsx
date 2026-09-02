@@ -76,11 +76,11 @@ export function Editor({ id }: { id: string }) {
     const ai = useAiPanel.getState();
     const kickoff = takeKickoff(id);
     if (kickoff) {
-      // Arriving from the dashboard's chat card: open the chat with the first message queued.
+      // Arriving from the dashboard chat: continue that conversation in the AI panel.
       ai.reset();
       ai.set('forSkill', id);
-      ai.set('interviewTurns', [{ role: 'user', content: kickoff }]);
-      ai.set('interviewPending', true);
+      ai.set('interviewTurns', kickoff.turns);
+      ai.set('interviewStep', kickoff.step);
       ai.setMode('interview');
       useUi.getState().setPreviewTab('ai');
     } else if (ai.forSkill !== id) {

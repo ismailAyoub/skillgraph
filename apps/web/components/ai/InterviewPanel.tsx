@@ -1,7 +1,6 @@
 'use client';
 
 import type { InterviewStep, InterviewTurn } from '@skillgraph/ai';
-import { useEffect, useRef } from 'react';
 import { Button, Pill, TextArea } from '@/components/ui';
 import { callAi } from '@/lib/ai';
 import { useAiPanel } from '@/lib/aiStore';
@@ -14,7 +13,6 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
   const turns = useAiPanel((s) => s.interviewTurns);
   const step = useAiPanel((s) => s.interviewStep);
   const draft = useAiPanel((s) => s.interviewDraft);
-  const pending = useAiPanel((s) => s.interviewPending);
   const setValue = useAiPanel((s) => s.set);
   const { busy, error, run } = useAiRun();
 
@@ -39,15 +37,6 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
     );
   };
 
-  // A first message queued by the dashboard card is sent as soon as AI is reachable.
-  const advanceRef = useRef(advance);
-  advanceRef.current = advance;
-  useEffect(() => {
-    if (!pending || disabled || !doc) return;
-    setValue('interviewPending', false);
-    advanceRef.current(useAiPanel.getState().interviewTurns);
-  }, [pending, disabled, doc, setValue]);
-
   const send = () => {
     const text = draft.trim();
     if (!text) return;
@@ -59,7 +48,6 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
     setValue('interviewTurns', []);
     setValue('interviewStep', null);
     setValue('interviewDraft', '');
-    setValue('interviewPending', false);
   };
 
   return (
