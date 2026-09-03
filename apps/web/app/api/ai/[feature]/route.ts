@@ -6,6 +6,8 @@ import {
   isAiError,
   isAiFeature,
 } from '@skillgraph/ai';
+import { claudeAuthProblem, createClaudeCliBackend } from '@skillgraph/ai/claude-cli';
+import { localClaudeAuth } from '@/lib/localAi';
 
 /** The Anthropic SDK needs Node APIs; never run these on the edge runtime. */
 export const runtime = 'nodejs';
@@ -25,9 +27,23 @@ export async function POST(
   const { feature } = await params;
   if (!isAiFeature(feature)) return fail('not_found', `Unknown AI feature "${feature}"`);
 
-  // The key travels per request and is never logged or persisted.
+  // The key travels per request and is never logged or persisted. Without a key, a server running
+  // on the user's own machine may run `claude -p` with their Claude Code login (see lib/localAi).
   const key = req.headers.get('x-anthropic-key')?.trim();
-  if (!key) return fail('auth', 'Missing x-anthropic-key header');
+  let localBin: string | null = null;
+  if (!key) {
+    let auth = await localClaudeAuth();
+    if (!auth)
+      return fail(
+        'auth',
+        'No API key was sent, and this server does not run a local Claude Code CLI. Open "Connect AI".',
+      );
+    // The cached answer may predate a login the user just did; check again before refusing.
+    if (claudeAuthProblem(auth)) auth = (await localClaudeAuth(true)) ?? auth;
+    const problem = claudeAuthProblem(auth);
+    if (problem) return fail('auth', problem);
+    localBin = auth.bin;
+  }
   const model = req.headers.get('x-anthropic-model')?.trim() || undefined;
 
   let body: AiFeatureBody;
@@ -38,7 +54,11 @@ export async function POST(
   }
 
   try {
-    const ai = createAi(model ? { apiKey: key, model } : { apiKey: key });
+    const ai = key
+      ? createAi(model ? { apiKey: key, model } : { apiKey: key })
+      : createAi({
+          backend: createClaudeCliBackend({ bin: localBin as string, ...(model ? { model } : {}) }),
+        });
     const result = await dispatchAiFeature(ai, feature, body);
     return Response.json({ ok: true, result });
   } catch (e) {

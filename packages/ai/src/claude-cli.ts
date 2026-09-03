@@ -4,14 +4,39 @@
  * without an API key. Import from `@skillgraph/ai/claude-cli`; the main entry stays browser-safe.
  */
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { accessSync, constants, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { z } from 'zod';
 import { AiError } from './errors';
 import type { StructuredBackend } from './types';
 
 export const CLAUDE_BIN_ENV = 'SKILLGRAPH_CLAUDE_BIN';
+
+function isExecutable(path: string): boolean {
+  try {
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Path of the Claude Code CLI this process would run: `$SKILLGRAPH_CLAUDE_BIN`, else the first
+ * `claude` on PATH. Null when none is executable. Cheap: nothing is spawned.
+ */
+export function findClaudeBin(env: NodeJS.ProcessEnv = process.env): string | null {
+  const wanted = env[CLAUDE_BIN_ENV] || 'claude';
+  if (wanted.includes('/')) return isExecutable(wanted) ? wanted : null;
+  for (const dir of (env.PATH ?? '').split(delimiter)) {
+    if (!dir) continue;
+    // A PATH scan, not a project file: keep bundlers from tracing the whole repo into the output.
+    const full = join(/*turbopackIgnore: true*/ dir, wanted);
+    if (isExecutable(full)) return full;
+  }
+  return null;
+}
 
 export interface ClaudeCliOptions {
   /** Binary to run (default: `$SKILLGRAPH_CLAUDE_BIN` or `claude`). */
@@ -73,6 +98,92 @@ function runCli(
     child.stdin.on('error', () => {});
     child.stdin.end(input);
   });
+}
+
+/** What `claude auth status` says about the login on this machine. */
+export interface ClaudeAuth {
+  /** Absolute path of the CLI, or null when it is not installed. */
+  bin: string | null;
+  loggedIn: boolean;
+  /** `claude.ai` for a subscription login, `console` for API billing; null when logged out. */
+  method: string | null;
+  /** `pro`, `max`, ... when known. */
+  subscription: string | null;
+  /** The account email when known. */
+  account: string | null;
+  /** Why the check could not run; the other fields are then best effort. */
+  error?: string;
+}
+
+const LOGGED_OUT: Omit<ClaudeAuth, 'bin'> = {
+  loggedIn: false,
+  method: null,
+  subscription: null,
+  account: null,
+};
+
+/** Parse `claude auth status --json` output (tolerates noise around the JSON object). */
+export function parseAuthStatus(stdout: string): Omit<ClaudeAuth, 'bin'> {
+  const start = stdout.indexOf('{');
+  const end = stdout.lastIndexOf('}');
+  if (start === -1 || end < start)
+    return { ...LOGGED_OUT, error: 'unexpected output from `claude auth status`' };
+  try {
+    const o = JSON.parse(stdout.slice(start, end + 1)) as Record<string, unknown>;
+    const method =
+      typeof o.authMethod === 'string' && o.authMethod !== 'none' ? o.authMethod : null;
+    return {
+      loggedIn: o.loggedIn === true,
+      method,
+      subscription: typeof o.subscriptionType === 'string' ? o.subscriptionType : null,
+      account: typeof o.email === 'string' ? o.email : null,
+    };
+  } catch (e) {
+    return {
+      ...LOGGED_OUT,
+      error: `could not parse \`claude auth status\`: ${(e as Error).message}`,
+    };
+  }
+}
+
+/**
+ * Is the Claude Code CLI installed and logged in? Runs `claude auth status --json` (fast, no
+ * network). Callers cache this; it is what the editor shows as the subscription status.
+ */
+export async function claudeAuthStatus(
+  opts: { bin?: string; env?: NodeJS.ProcessEnv; timeoutMs?: number } = {},
+): Promise<ClaudeAuth> {
+  const env = { ...process.env, ...(opts.env ?? {}) };
+  delete env.CLAUDECODE;
+  delete env.CLAUDE_CODE_ENTRYPOINT;
+  const bin = opts.bin ?? findClaudeBin(env);
+  if (!bin) return { bin: null, ...LOGGED_OUT };
+  try {
+    const run = await runCli(
+      bin,
+      ['auth', 'status', '--json'],
+      '',
+      tmpdir(),
+      opts.timeoutMs ?? 8000,
+      env,
+    );
+    if (run.timedOut) return { bin, ...LOGGED_OUT, error: '`claude auth status` timed out' };
+    const parsed = parseAuthStatus(run.stdout);
+    if (!parsed.loggedIn && !parsed.error && run.exitCode !== 0 && run.stderr.trim())
+      parsed.error = run.stderr.trim();
+    return { bin, ...parsed };
+  } catch (e) {
+    return { bin, ...LOGGED_OUT, error: (e as Error).message };
+  }
+}
+
+/** The one thing stopping `claude -p` from working, as a sentence for the UI; null when ready. */
+export function claudeAuthProblem(auth: ClaudeAuth): string | null {
+  if (!auth.bin)
+    return 'Claude Code is not installed on this machine (no `claude` on PATH). Install it and log in once, or use an API key.';
+  if (!auth.loggedIn)
+    return 'Claude Code on this machine is not logged in. In a terminal run `claude auth login`, sign in, and paste the code it shows back into the terminal.';
+  return null;
 }
 
 /** Pull the `result` text out of `claude -p --output-format json` output. */

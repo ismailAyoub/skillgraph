@@ -12,6 +12,12 @@ export const BRIDGE_START_COMMANDS = [
   'pnpm install',
   'pnpm --filter skillgraph dev dev',
 ] as const;
+/** Same, but installed once as a macOS launchd agent: starts at login, no terminal to keep open. */
+export const BRIDGE_SERVICE_COMMANDS = [
+  'git clone https://github.com/ismailAyoub/skillgraph.git && cd skillgraph',
+  'pnpm install',
+  'pnpm --filter skillgraph dev service install',
+] as const;
 const KEY = 'skillgraph:bridgeUrl';
 
 export interface BridgeSkill {

@@ -3,9 +3,11 @@
 import type { GraphPatchT, PatchOpT } from '@skillgraph/core';
 import { useCallback, useState } from 'react';
 import { Button, Pill } from '@/components/ui';
-import { AiClientError, NO_KEY_HINT } from '@/lib/ai';
+import { AiClientError } from '@/lib/ai';
+import { claudeStep, subscriptionHint } from '@/lib/claudeStatus';
 import { useEditor } from '@/lib/store';
 import { useUi } from '@/lib/uiStore';
+import { useAiSettings } from '@/lib/useSettings';
 
 /** One line per op: what it does, to which node, and which keys it touches. */
 export function summarizeOp(op: PatchOpT): { kind: string; id: string; keys: string[] } {
@@ -100,12 +102,13 @@ export function Busy({ label = 'Thinking…' }: { label?: string }) {
 
 export function NoKeyHint() {
   const setAiSetupOpen = useUi((s) => s.setAiSetupOpen);
+  const { claude } = useAiSettings();
   return (
     <div
       data-testid="ai-no-key"
       className="space-y-1.5 rounded border border-[var(--accent)] bg-[var(--accent-soft)]/40 px-2 py-2 text-[11px]"
     >
-      <p className="leading-snug">{NO_KEY_HINT}</p>
+      <p className="leading-snug">{subscriptionHint(claudeStep(claude))}</p>
       <Button variant="primary" onClick={() => setAiSetupOpen(true)}>
         Connect AI
       </Button>

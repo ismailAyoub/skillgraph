@@ -115,14 +115,22 @@ Run the bridge in a terminal and the editor's "Local skills" panel lists the fol
 pnpm --filter skillgraph dev dev --dir ~/.claude/skills --port 4321
 ```
 
-The bridge is a small HTTP API (`/api/health`, `/api/skills`, `/api/skills/:name` GET and PUT) that only listens on 127.0.0.1.
+The bridge is a small HTTP API (`/api/health`, `/api/skills`, `/api/skills/:name` GET and PUT, `/api/ai/*`) that only listens on 127.0.0.1.
+
+To stop keeping a terminal open, install it once as a macOS launchd agent. It starts at login, restarts if it stops, and logs to `~/Library/Logs/skillgraph/bridge.log`:
+
+```bash
+pnpm --filter skillgraph dev service install     # also: status, uninstall
+```
+
+The service runs the same node and CLI entry you installed it from (tsx from a checkout, `dist` from a build) and pins the `claude` binary it found on your PATH, since launchd starts agents with a bare environment.
 
 ### AI
 
 The dashboard opens with "Build a skill by chatting": describe the skill in a sentence and the editor opens on the chat, which asks one question at a time and draws the graph as you answer. Inside the editor the header "Chat" button opens the same panel, and "Connect AI" explains how the editor reaches Claude. Signing in to SkillGraph only stores skills; it is not a Claude login. Two ways to power the AI, chosen in "Connect AI":
 
 - **API key.** Paste an Anthropic API key and pick a model. The key stays in this browser's localStorage and is sent only to this app's `/api/ai/*` route handlers, one request at a time; the server never stores or logs it.
-- **Your Claude Code login, no key.** Run `skillgraph dev` on your machine. The bridge then also serves `/api/ai/*` by running the local `claude -p` (tools off, one turn, JSON answer validated against the same schemas), so a Claude subscription is enough. The hosted app detects the bridge and uses it automatically when no key is set; "Auto" prefers the key when both exist.
+- **Your Claude Code login, no key.** Anything running on your machine can relay to the local `claude -p` (tools off, one turn, JSON answer validated against the same schemas), so a Claude subscription is enough. Two relays exist: the web app's own server, when it runs locally (`next dev`, or `SKILLGRAPH_LOCAL_AI=1` for a local `next start`; never on Vercel), serves `/api/ai/*` without a key; and the `skillgraph dev` bridge does the same from a separate process, for the hosted app. The editor probes both and picks the app's own server first, then the bridge; "Auto" prefers the key when one is set. Both relays run `claude auth status` (cached 30 s) and report it (`/api/ai/status`, `/api/health`: `claude: { bin, loggedIn, account, subscription }`), so the Connect AI dialog shows the subscription path as three steps (a relay on this machine, Claude Code installed, logged in) with the next one to do, and the header says "Log in to Claude Code" rather than a generic "Connect AI" when that is what is missing. Logging in is `claude auth login` in a terminal, then pasting the code the browser shows back into that terminal; an expired session needs `claude auth logout` first.
 
 The AI tab in the right-hand panel offers:
 

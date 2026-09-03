@@ -10,7 +10,12 @@ import {
   isAiError,
   isAiFeature,
 } from '@skillgraph/ai';
-import { createClaudeCliBackend } from '@skillgraph/ai/claude-cli';
+import {
+  type ClaudeAuth,
+  claudeAuthProblem,
+  claudeAuthStatus,
+  createClaudeCliBackend,
+} from '@skillgraph/ai/claude-cli';
 import { compile, contentHash, decompile, migrate, type SkillFile } from '@skillgraph/core';
 import pc from 'picocolors';
 import { aggregateTraceFiles, readTraces } from '../eval/trace';
@@ -70,6 +75,23 @@ function listSkills(dir: string): SkillEntry[] {
   return out.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/** `claude auth status`, cached for 30 s; `fresh` re-checks (the user may have just logged in). */
+let authCache: { at: number; auth: ClaudeAuth } | undefined;
+async function claudeAuth(fresh = false): Promise<ClaudeAuth> {
+  const now = Date.now();
+  if (fresh || !authCache || now - authCache.at > 30_000)
+    authCache = { at: now, auth: await claudeAuthStatus() };
+  return authCache.auth;
+}
+
+function describeAuth(auth: ClaudeAuth): string {
+  if (!auth.bin) return pc.yellow('not installed (no `claude` on PATH)');
+  if (!auth.loggedIn)
+    return pc.yellow('not logged in: run `claude auth login`, then paste the code it shows');
+  const who = [auth.account, auth.subscription].filter(Boolean).join(' · ');
+  return pc.green(`logged in${who ? ` (${who})` : ''}`);
+}
+
 /** Local bridge: lets the web editor list, open and save skills in a folder (default ~/.claude/skills). */
 export function devCommand(args: { dir?: string; port?: number; host?: string }): Promise<number> {
   const dir = resolve(args.dir ?? join(homedir(), '.claude', 'skills'));
@@ -86,8 +108,16 @@ export function devCommand(args: { dir?: string; port?: number; host?: string })
         res.end();
         return;
       }
-      if (url.pathname === '/api/health')
-        return json(res, 200, { ok: true, dir, version: VERSION, ai: 'claude-cli' });
+      if (url.pathname === '/api/health') {
+        const claude = await claudeAuth();
+        return json(res, 200, {
+          ok: true,
+          dir,
+          version: VERSION,
+          ai: claude.bin && claude.loggedIn ? 'claude-cli' : null,
+          claude,
+        });
+      }
 
       // AI features backed by the local Claude Code CLI (or the API when a key header is sent).
       const ai = url.pathname.match(/^\/api\/ai\/([a-z-]+)$/);
@@ -114,9 +144,21 @@ export function devCommand(args: { dir?: string; port?: number; host?: string })
           });
         }
         try {
-          const aiClient = key
-            ? createAi(model ? { apiKey: key, model } : { apiKey: key })
-            : createAi({ backend: createClaudeCliBackend(model ? { model } : {}) });
+          let aiClient: ReturnType<typeof createAi>;
+          if (key) {
+            aiClient = createAi(model ? { apiKey: key, model } : { apiKey: key });
+          } else {
+            let auth = await claudeAuth();
+            if (claudeAuthProblem(auth)) auth = await claudeAuth(true);
+            const problem = claudeAuthProblem(auth);
+            if (problem) return json(res, 401, { ok: false, error: problem, code: 'auth' });
+            aiClient = createAi({
+              backend: createClaudeCliBackend({
+                bin: auth.bin as string,
+                ...(model ? { model } : {}),
+              }),
+            });
+          }
           const result = await dispatchAiFeature(aiClient, feature, body);
           return json(res, 200, { ok: true, result });
         } catch (e) {
@@ -212,13 +254,14 @@ export function devCommand(args: { dir?: string; port?: number; host?: string })
   });
 
   return new Promise((resolveExit) => {
-    server.listen(port, host, () => {
+    server.listen(port, host, async () => {
       console.log(pc.bold(`skillgraph dev bridge`));
       console.log(`  folder  ${dir}`);
       console.log(`  api     http://${host}:${port}/api/skills`);
       console.log(
         `  ai      http://${host}:${port}/api/ai/<feature> (local claude -p; your login)`,
       );
+      console.log(`  claude  ${describeAuth(await claudeAuth())}`);
       console.log(
         pc.dim('  Open the SkillGraph editor and it will list these skills under "Local skills".'),
       );

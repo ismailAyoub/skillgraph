@@ -11,7 +11,8 @@ import type {
 } from '@skillgraph/ai';
 import type { CompileResult, Diagnostic, SkillDoc } from '@skillgraph/core';
 import { getBridgeUrl } from './bridge';
-import { getAiBackend, getAiModel, getAnthropicKey } from './settings';
+import { type SubscriptionStep, subscriptionHint } from './claudeStatus';
+import { getAiBackend, getAiModel, getAnthropicKey, notifySettingsChange } from './settings';
 import { resolveBackend } from './useSettings';
 
 /** Route features; each maps 1:1 to an `Ai` method (see BUILD_CONTRACT "Web route contract"). */
@@ -63,13 +64,14 @@ export class AiClientError extends Error {
   }
 }
 
-export const NO_KEY_HINT =
-  'AI is not connected yet. Open "Connect AI" to use your Claude subscription (through the local bridge) or an Anthropic API key.';
-
-/** Cached result of the last bridge health probe (kept fresh by useAiSettings). */
-let bridgeAiAvailable = false;
-export function setBridgeAiAvailable(v: boolean): void {
-  bridgeAiAvailable = v;
+/** Cached result of the last availability probes (kept fresh by useAiSettings). */
+let available: { bridge: boolean; local: boolean; step: SubscriptionStep } = {
+  bridge: false,
+  local: false,
+  step: 'relay',
+};
+export function setAiAvailability(v: typeof available): void {
+  available = v;
 }
 
 /**
@@ -82,14 +84,14 @@ export async function callAi<F extends AiFeature>(
   signal?: AbortSignal,
 ): Promise<AiFeatures[F]['output']> {
   const key = getAnthropicKey();
-  const target = resolveBackend(getAiBackend(), key, bridgeAiAvailable);
-  if (!target) throw new AiClientError(NO_KEY_HINT, 'no_key');
-  const url = target === 'api' ? `/api/ai/${feature}` : `${getBridgeUrl()}/api/ai/${feature}`;
+  const target = resolveBackend(getAiBackend(), key, available.bridge, available.local);
+  if (!target) throw new AiClientError(subscriptionHint(available.step), 'no_key');
+  const url = target === 'bridge' ? `${getBridgeUrl()}/api/ai/${feature}` : `/api/ai/${feature}`;
   const headers: Record<string, string> = {
     'content-type': 'application/json',
     'x-anthropic-model': getAiModel(),
   };
-  // The bridge runs `claude -p` with your local login; the key only travels to the hosted route.
+  // `local` and `bridge` run `claude -p` with your login; the key only travels with `api`.
   if (target === 'api') headers['x-anthropic-key'] = key;
   let res: Response;
   try {
@@ -103,7 +105,7 @@ export async function callAi<F extends AiFeature>(
     const why = (e as Error).message || 'Network error';
     throw new AiClientError(
       target === 'bridge'
-        ? `Could not reach the local bridge at ${getBridgeUrl()} (${why}). Is \`skillgraph dev\` still running?`
+        ? `Could not reach the local bridge at ${getBridgeUrl()} (${why}). Is \`skillgraph dev\` (or the service) still running?`
         : why,
       'network',
     );
@@ -116,6 +118,8 @@ export async function callAi<F extends AiFeature>(
   }
   if (!res.ok || !body.ok) {
     const code = (body.code ?? 'api') as AiClientCode;
+    // A login that expired since the last probe: re-probe now so the header and dialog catch up.
+    if (code === 'auth') notifySettingsChange();
     throw new AiClientError(body.error ?? `HTTP ${res.status}`, code, res.status);
   }
   return body.result as AiFeatures[F]['output'];

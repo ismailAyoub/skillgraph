@@ -10,6 +10,7 @@ import { Busy, ErrorNote } from '@/components/ai/common';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { Button, Pill } from '@/components/ui';
 import { callAi } from '@/lib/ai';
+import { claudeStep, subscriptionCta } from '@/lib/claudeStatus';
 import { saveSkill } from '@/lib/db';
 import { setKickoff } from '@/lib/kickoff';
 import { TEMPLATES } from '@/lib/templates';
@@ -69,7 +70,8 @@ function draftSummary(file: SkillFile): {
  */
 export function AiStart() {
   const router = useRouter();
-  const { effective } = useAiSettings();
+  const { effective, claude } = useAiSettings();
+  const cta = subscriptionCta(claudeStep(claude));
   const setupOpen = useUi((s) => s.aiSetupOpen);
   const setSetupOpen = useUi((s) => s.setAiSetupOpen);
   const [file, setFile] = useState<SkillFile | null>(null);
@@ -203,7 +205,7 @@ export function AiStart() {
                 className="flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--accent)]"
                 data-testid="ai-start-connect"
               >
-                <Sparkles size={13} /> Connect AI first
+                <Sparkles size={13} /> {cta} first
               </button>
             )}
             <span className="ml-auto" />
@@ -227,7 +229,7 @@ export function AiStart() {
               onClick={() => void send()}
               disabled={!draft.trim() || busy}
               data-testid="ai-start-go"
-              title={effective ? 'Send (⌘⏎)' : 'Connect AI first'}
+              title={effective ? 'Send (⌘⏎)' : `${cta} first`}
               className="px-4 py-2.5 text-[14px]"
             >
               {started ? 'Send' : 'Start chatting'}
