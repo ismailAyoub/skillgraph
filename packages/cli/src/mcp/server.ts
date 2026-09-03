@@ -8,8 +8,11 @@ import {
   decompile,
   emptySkillFile,
   GraphPatch,
+  type GraphPatchT,
   lint,
   type SkillFile,
+  unpackableNodes,
+  unpackNodes,
 } from '@skillgraph/core';
 import { z } from 'zod';
 import { buildZip } from '../commands/export';
@@ -89,7 +92,7 @@ export function createSkillgraphMcpServer(options: McpServerOptions): McpServer 
       instructions: [
         'SkillGraph edits Agent Skills as graphs (SKILL.graph.json is canonical; SKILL.md is compiled from it).',
         `Skills live in ${dir}; address one by folder name (skill) or absolute path.`,
-        'Call graph_vocabulary once to learn the node kinds, edges and GraphPatch ops, then graph_get -> graph_apply_patch -> graph_lint -> graph_compile.',
+        'Call graph_vocabulary once to learn the node kinds, edges and GraphPatch ops, then graph_get -> graph_apply_patch -> graph_lint -> graph_compile. When graph_lint reports graph/procedure-in-markdown, call graph_unpack to turn that markdown into step nodes.',
       ].join(' '),
     },
   );
@@ -241,6 +244,68 @@ export function createSkillgraphMcpServer(options: McpServerOptions): McpServer 
             budget: w.result.report.budget,
             files: w.result.report.files,
           },
+          lint: lintSummary(w.lint),
+        });
+      }),
+  );
+
+  server.registerTool(
+    'graph_unpack',
+    {
+      title: 'Unpack markdown into nodes',
+      description:
+        'Turn procedures hiding inside markdown into nodes, deterministically: a raw_markdown body, a reference that is really the workflow, or a step with an embedded numbered list becomes phase/step/checklist/guardrail nodes so the graph shows every step. Without nodeIds every unpackable node is unpacked. Writes SKILL.graph.json and, with compile (default true), the compiled files.',
+      inputSchema: {
+        ...skillRef,
+        nodeIds: z
+          .array(z.string())
+          .optional()
+          .describe(
+            'Nodes to unpack (default: every node graph_lint flags as procedure-in-markdown).',
+          ),
+        compile: z
+          .boolean()
+          .optional()
+          .describe('Compile and write files after applying (default true).'),
+        force: z.boolean().optional().describe('Overwrite hand-edited compiled files.'),
+      },
+    },
+    async (args) =>
+      guarded(() => {
+        const skillDir = resolveSkillDir(dir, args);
+        const loaded = loadSkill(skillDir);
+        const ids = args.nodeIds ?? unpackableNodes(loaded.file.doc).map((u) => u.node.id);
+        if (ids.length === 0) return json({ ok: true, unpacked: [], note: 'Nothing to unpack.' });
+        let patch: GraphPatchT;
+        try {
+          patch = unpackNodes(loaded.file.doc, ids);
+        } catch (e) {
+          return fail(`Unpack rejected: ${(e as Error).message}`);
+        }
+        const applied = applyPatch(loaded.file.doc, patch);
+        assertNoDrift(skillDir, loaded.file, args.force);
+        const next: SkillFile = { ...loaded.file, doc: applied.doc };
+        if (!(args.compile ?? true)) {
+          writeGraph(skillDir, next);
+          const l = lint(next.doc, { dirName: dirName(skillDir) });
+          return json({
+            ok: true,
+            compiled: false,
+            unpacked: ids,
+            nodeCount: next.doc.nodes.length,
+            inverse: applied.inverse,
+            lint: lintSummary(l),
+          });
+        }
+        const w = compileAndWrite(skillDir, next);
+        return json({
+          ok: true,
+          compiled: true,
+          unpacked: ids,
+          nodeCount: w.file.doc.nodes.length,
+          written: w.written,
+          lines: w.result.report.lines,
+          inverse: applied.inverse,
           lint: lintSummary(w.lint),
         });
       }),

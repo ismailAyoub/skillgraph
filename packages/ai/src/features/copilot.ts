@@ -4,7 +4,7 @@ import { AiError } from '../errors';
 import { describeGraphForPrompt, systemPrompt, wrapUntrusted } from '../prompt';
 import { ProposalOutputSchema } from '../schemas';
 import type { CopilotIntent, Proposal } from '../types';
-import { toProposalPatch } from '../validate';
+import { toProposalPatch, UNPACK_EDIT } from '../validate';
 
 const INTENTS: Record<Exclude<CopilotIntent, 'custom'>, string> = {
   'rewrite-imperative':
@@ -45,5 +45,8 @@ export async function copilot(
     wrapUntrusted('skill_graph', describeGraphForPrompt(input.doc)),
   ].join('\n\n');
   const out = await callStructured(ctx, ProposalOutputSchema, systemPrompt(ROLE), user);
-  return { patch: toProposalPatch(input.doc, out.patch), rationale: out.rationale.trim() };
+  return {
+    patch: toProposalPatch(input.doc, out.patch, { unpack: UNPACK_EDIT }),
+    rationale: out.rationale.trim(),
+  };
 }

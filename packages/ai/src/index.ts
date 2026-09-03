@@ -23,7 +23,15 @@ export {
 export { AiError, type AiErrorCode, isAiError } from './errors';
 export { AUTHORING_GUIDE, describeGraphForPrompt, NODE_VOCABULARY } from './prompt';
 export * from './types';
-export { normalizeAiPatch, validateProposal } from './validate';
+export {
+  normalizeAiPatch,
+  type ProposalOptions,
+  toProposalPatch,
+  UNPACK_DRAFT,
+  UNPACK_EDIT,
+  unpackProposal,
+  validateProposal,
+} from './validate';
 
 /**
  * Build an `Ai` over the Anthropic API. Every method returns a typed result; patch-bearing

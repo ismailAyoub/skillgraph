@@ -1,5 +1,13 @@
+import { applyPatch } from '@skillgraph/core';
 import { describe, expect, it } from 'vitest';
-import { AiError, normalizeAiPatch, validateProposal } from '../src/index';
+import {
+  AiError,
+  normalizeAiPatch,
+  toProposalPatch,
+  UNPACK_DRAFT,
+  UNPACK_EDIT,
+  validateProposal,
+} from '../src/index';
 import type { AiPatchOp } from '../src/schemas';
 import { addedNode, demoDoc } from './helpers';
 
@@ -190,5 +198,92 @@ describe('normalizeAiPatch', () => {
     expect(() =>
       normalizeAiPatch(doc, { ops: [aiOp({ op: 'update', id: null, data: '{}' })] }),
     ).toThrow(/update op without id/);
+  });
+});
+
+const PROCEDURE_MD =
+  '1. **Check the tests** ran on the branch.\n2. **Read the description** and compare it with the diff.\n3. **List the risks** you see.';
+
+describe('toProposalPatch with unpack', () => {
+  it('turns a raw_markdown blob the model added into step nodes', () => {
+    const doc = demoDoc();
+    const ai = {
+      ops: [
+        aiOp({
+          op: 'add',
+          node: JSON.stringify({
+            id: 'raw_procedure',
+            kind: 'raw_markdown',
+            parentId: 'phase_review',
+            order: 2,
+            body: PROCEDURE_MD,
+          }),
+        }),
+      ],
+    };
+    const plain = applyPatch(doc, toProposalPatch(doc, ai)).doc;
+    expect(plain.nodes.some((n) => n.kind === 'raw_markdown')).toBe(true);
+
+    const unpacked = applyPatch(doc, toProposalPatch(doc, ai, { unpack: UNPACK_EDIT })).doc;
+    expect(unpacked.nodes.some((n) => n.kind === 'raw_markdown')).toBe(false);
+    const steps = unpacked.nodes
+      .filter((n) => n.parentId === 'phase_review')
+      .sort((a, b) => a.order - b.order);
+    expect(steps.map((n) => n.title)).toEqual([
+      'Read the diff',
+      'Write the summary',
+      'Check the tests',
+      'Read the description',
+      'List the risks',
+    ]);
+    expect(steps.slice(2).every((n) => n.provenance === 'ai')).toBe(true);
+    // The container already used next edges, so the new steps join the chain.
+    expect(unpacked.edges.filter((e) => e.kind === 'next')).toHaveLength(4);
+  });
+
+  it('dissolves a procedural reference when drafting, keeps it when editing', () => {
+    const doc = demoDoc();
+    const ai = {
+      ops: [
+        aiOp({
+          op: 'add',
+          node: JSON.stringify({
+            id: 'reference_procedure',
+            kind: 'reference',
+            parentId: null,
+            order: 3,
+            path: 'references/procedure.md',
+            body: PROCEDURE_MD,
+            readWhen: 'when reviewing',
+          }),
+        }),
+        aiOp({
+          op: 'addEdge',
+          edge: JSON.stringify({
+            id: 'edge_reads_procedure',
+            kind: 'reads',
+            source: 'step_write',
+            target: 'reference_procedure',
+          }),
+        }),
+      ],
+    };
+    const edited = applyPatch(doc, toProposalPatch(doc, ai, { unpack: UNPACK_EDIT })).doc;
+    expect(edited.nodes.some((n) => n.id === 'reference_procedure')).toBe(true);
+
+    const drafted = applyPatch(doc, toProposalPatch(doc, ai, { unpack: UNPACK_DRAFT })).doc;
+    expect(drafted.nodes.some((n) => n.id === 'reference_procedure')).toBe(false);
+    const steps = drafted.nodes
+      .filter((n) => n.parentId === 'phase_review')
+      .sort((a, b) => a.order - b.order)
+      .map((n) => n.title);
+    expect(steps).toEqual([
+      'Read the diff',
+      'Write the summary',
+      'Check the tests',
+      'Read the description',
+      'List the risks',
+    ]);
+    expect(drafted.edges.some((e) => e.target === 'reference_procedure')).toBe(false);
   });
 });

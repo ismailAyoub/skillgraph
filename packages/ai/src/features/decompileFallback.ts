@@ -4,7 +4,7 @@ import { AiError } from '../errors';
 import { describeGraphForPrompt, systemPrompt, wrapUntrusted } from '../prompt';
 import { ProposalOutputSchema } from '../schemas';
 import type { Proposal } from '../types';
-import { toProposalPatch } from '../validate';
+import { toProposalPatch, UNPACK_EDIT } from '../validate';
 
 const ROLE = `You are the AI fallback of the SkillGraph decompiler. The deterministic importer kept some markdown verbatim in raw_markdown nodes because no recognizer matched. Your job is to replace those raw chunks with structured nodes that compile back to equivalent prose, so the graph becomes editable.
 
@@ -46,5 +46,8 @@ export async function decompileFallback(
     chunks,
   ].join('\n\n');
   const out = await callStructured(ctx, ProposalOutputSchema, systemPrompt(ROLE), user);
-  return { patch: toProposalPatch(input.doc, out.patch), rationale: out.rationale.trim() };
+  return {
+    patch: toProposalPatch(input.doc, out.patch, { unpack: UNPACK_EDIT }),
+    rationale: out.rationale.trim(),
+  };
 }

@@ -167,7 +167,7 @@ A skill is a graph. Every node has \`id\`, \`kind\`, \`parentId\` (null at the r
 | delegate | hand a task to a subagent | agentType, task, parallel, returns |
 | skill_call | invoke another skill | skill, args, when |
 | inject | claude-code only: \`!\`command\`\` dynamic context | command, label |
-| raw_markdown | verbatim markdown the compiler does not model | body |
+| raw_markdown | verbatim markdown the compiler does not model; last resort, never a procedure | body |
 | note | canvas-only annotation; never compiled | body |
 
 Root-level output_format / example / guardrail / checklist / catalog nodes are diverted into synthesized sections (Output, Examples, Guidelines, Verification, Rule categories). Inside a phase or loop they render in place. Nodes render in (order, id) among siblings unless \`next\`/\`branch\` edges impose a topological order.
@@ -197,6 +197,7 @@ export const AUTHORING_GUIDE = `## What makes a good Agent Skill
 - The description is the trigger. It states WHAT the skill does and WHEN to use it, in the third person ("Use this skill when..." / "Guides ..."), never "I" or "you". Claude under-triggers, so be a little pushy: name concrete user phrasings, adjacent situations and "even if the user does not say <keyword>". Focus on user intent, not implementation. 100-200 words, hard limit 1024 characters, no angle brackets. Put ALL when-to-use information in the description, not the body.
 - Steps are imperative, one concern each, and explain WHY when the reason is not obvious ("...so that the reviewer sees the shape before the details"). Explain instead of shouting: at most a couple of MUST/NEVER/ALWAYS in the whole skill. Assume a capable reader: give the principle and the trade-off, then the procedure.
 - Progressive disclosure: keep SKILL.md under 500 lines / ~5000 tokens. Move long material (API details, rule tables, templates, domain variants) into references/<topic>.md with a clear read-when condition on the host step ("Read references/forms.md when the input has fillable fields"). Reference files over 300 lines need a table of contents. Scripts go in scripts/ with a run-when and the expected output.
+- The canvas is the deliverable. Every step of the procedure is its own node (step, decision, ask_user, delegate, loop), grouped into phases, so the workflow is visible at a glance. Never hide a numbered or bulleted procedure inside a raw_markdown body, a reference body or a single step's instruction. References hold lookup material (tables, API details, templates, long background) that a step reads on demand; raw_markdown is a last resort for prose no kind models.
 - Structure: phases (numbered headings) group steps; decisions branch on observable conditions with an explicit Otherwise; loops state the exit condition; ask_user steps explain what the answer changes. Include an output format when the result has a shape, 1-3 examples when the format is subtle, guardrails for the real failure modes, and a verification checklist.
 - Generalize. Do not overfit to the examples in a transcript or to specific file names; extract the reusable procedure. Avoid time-sensitive facts (dates, "latest version", "currently").
 - Consistency: one terminology throughout, relative file paths only (references/x.md), no ../ paths, no secrets, nothing that would surprise the user about the skill's intent.`;

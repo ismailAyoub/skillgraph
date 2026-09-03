@@ -1,3 +1,4 @@
+import { applyPatch } from '@skillgraph/core';
 import { describe, expect, it } from 'vitest';
 import { AiError } from '../src/index';
 import {
@@ -109,6 +110,23 @@ describe('interview', () => {
     expect(step.confidence).toBeCloseTo(0.62);
     expect(step.rationale).toBeTruthy();
     expect(step.patch?.ops[0]).toMatchObject({ op: 'add' });
+    expect(userTurn(ai.calls)).toContain('procedures hidden in markdown (unpack into nodes): 0');
+  });
+
+  it('unpacks a raw_markdown procedure the model answered with into step nodes', async () => {
+    const ai = aiFor('interview-raw');
+    const doc = demoDoc();
+    const step = await ai.interview({
+      doc,
+      transcript: [{ role: 'user', content: 'First check the tests, then read the description.' }],
+    });
+    const patch = step.patch;
+    if (!patch) throw new Error('expected a patch');
+    const next = applyPatch(doc, patch).doc;
+    expect(next.nodes.some((n) => n.kind === 'raw_markdown')).toBe(false);
+    expect(
+      next.nodes.filter((n) => n.kind === 'step' && n.provenance === 'ai').map((n) => n.title),
+    ).toEqual(['Check the tests', 'Read the description', 'List the risks']);
   });
 });
 

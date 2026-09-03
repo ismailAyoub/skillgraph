@@ -3,7 +3,7 @@ import { type CallContext, callStructured } from '../client';
 import { describeGraphForPrompt, systemPrompt, wrapUntrusted } from '../prompt';
 import { ProposalOutputSchema } from '../schemas';
 import type { Proposal } from '../types';
-import { toProposalPatch } from '../validate';
+import { toProposalPatch, UNPACK_DRAFT } from '../validate';
 
 const ROLE = `You turn a work transcript (a conversation between a user and an agent, a chat log, a shell session or notes) into an Agent Skill graph: the reusable procedure that would let an agent do this kind of task well next time.
 
@@ -11,7 +11,7 @@ Extract from the transcript: the goal, the tools and commands actually used, the
 
 Then build the graph with a patch:
 - update the entry: name (kebab-case, if still a placeholder), description (what + when, third person, pushy, mentions the situations seen in the transcript generalized to the category), triggers, negativeTriggers;
-- phases with imperative steps (one concern each, why where the transcript shows a reason), decisions for real branch points with an Otherwise, ask_user where the agent needed the user's input;
+- phases with imperative steps (one concern each, why where the transcript shows a reason), decisions for real branch points with an Otherwise, ask_user where the agent needed the user's input; one node per step, never a raw_markdown node or a reference whose body is the procedure (the canvas must show the workflow);
 - an output_format node when the result had a shape; guardrails from the corrections; a verification checklist from what was checked;
 - reference or script nodes only for material that is clearly reusable and complete (never invent code that was not in the transcript; summarize instead).
 Generalize: no user-specific file names, dates or one-off values; describe the class of input. Do not copy secrets, tokens or personal data. Reuse existing node ids from the listing when updating; new ids look like <kind>_<slug>.`;
@@ -26,5 +26,8 @@ export async function fromTranscript(
     wrapUntrusted('transcript', input.transcript),
   ].join('\n\n');
   const out = await callStructured(ctx, ProposalOutputSchema, systemPrompt(ROLE), user);
-  return { patch: toProposalPatch(input.doc, out.patch), rationale: out.rationale.trim() };
+  return {
+    patch: toProposalPatch(input.doc, out.patch, { unpack: UNPACK_DRAFT }),
+    rationale: out.rationale.trim(),
+  };
 }

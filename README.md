@@ -138,7 +138,8 @@ The AI tab in the right-hand panel offers:
 - **Describe**: description candidates with rationale plus 20 trigger queries (should-trigger and near-miss negatives) ready for `skillgraph eval triggers`.
 - **Copilot**: rewrite the selected node (imperative voice, add a why, split steps, draft a reference or script, tighten, or a custom instruction).
 - **Chat** (interview): one question at a time in skill-creator's order (what, when, output format, tests); each answer becomes a patch you can undo.
-- **Import**: paste a Claude Code transcript to extract a skill, or recover `raw_markdown` nodes left over from an import.
+- **Import**: paste a Claude Code transcript to extract a skill, or recover `raw_markdown` nodes left over from an import (deterministically with **Unpack**, or with the model).
+- **Unpack**: a procedure that hides inside one node's markdown (a `raw_markdown` blob, a `references/*.md` that is really the workflow, a step with a numbered list inside) becomes real step nodes, so the canvas shows the workflow. AI drafts are unpacked automatically; the inspector offers it for any node; `graph/procedure-in-markdown` flags what is left.
 
 Every AI result is a `GraphPatch` proposal validated against the graph before you see it; applying it goes through the normal undo history. Nothing runs scripts or `!` commands.
 
@@ -176,7 +177,7 @@ A trigger run counts a query as triggered when the transcript contains a `Skill`
 
 ## MCP server and the meta-skill
 
-`skillgraph mcp [--dir ~/.claude/skills]` serves the graph over stdio so Claude Code can build skills with the same `GraphPatch` contract the editor uses: `graph_get`, `graph_apply_patch`, `graph_compile`, `graph_lint`, `graph_import`, `graph_init`, `skill_export`, `graph_vocabulary`, plus the `skillgraph://vocabulary` resource. Writes go through the same drift protection as `compile`. The repo's `.mcp.json` points Claude Code at the workspace copy; for an installed CLI use:
+`skillgraph mcp [--dir ~/.claude/skills]` serves the graph over stdio so Claude Code can build skills with the same `GraphPatch` contract the editor uses: `graph_get`, `graph_apply_patch`, `graph_unpack`, `graph_compile`, `graph_lint`, `graph_import`, `graph_init`, `skill_export`, `graph_vocabulary`, plus the `skillgraph://vocabulary` resource. Writes go through the same drift protection as `compile`. The repo's `.mcp.json` points Claude Code at the workspace copy; for an installed CLI use:
 
 ```json
 { "mcpServers": { "skillgraph": { "command": "npx", "args": ["-y", "skillgraph", "mcp"] } } }
