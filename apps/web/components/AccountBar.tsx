@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui';
 import { ACCOUNTS_ENABLED, signOut, useSession } from '@/lib/auth';
+import { claudeStep, subscriptionCta } from '@/lib/claudeStatus';
 import { useUi } from '@/lib/uiStore';
 import { useAiSettings } from '@/lib/useSettings';
 
@@ -34,7 +35,7 @@ export function Wordmark() {
 export function AccountBar() {
   const { loading, user } = useSession();
   const router = useRouter();
-  const { effective } = useAiSettings();
+  const { effective, claude } = useAiSettings();
   const setSetupOpen = useUi((s) => s.setAiSetupOpen);
   return (
     <div className="border-b border-[var(--line)] bg-[var(--panel)]">
@@ -58,18 +59,18 @@ export function AccountBar() {
           type="button"
           onClick={() => setSetupOpen(true)}
           className={`flex items-center gap-1.5 text-[12.5px] ${effective ? 'text-[var(--muted)] hover:text-[var(--ink)]' : 'text-[var(--accent)]'}`}
-          title="Connect AI"
+          title={effective ? 'AI settings' : subscriptionCta(claudeStep(claude))}
           data-testid="ai-status"
         >
           {effective ? (
             <>
               <span className="h-[7px] w-[7px] rounded-full bg-[var(--ok)]" />
-              {effective === 'bridge' ? 'AI: Claude subscription' : 'AI: API key'}
+              {effective === 'api' ? 'AI: API key' : 'AI: Claude subscription'}
               <Check size={12} className="text-[var(--ok)]" />
             </>
           ) : (
             <>
-              <Sparkles size={13} /> Connect AI
+              <Sparkles size={13} /> {subscriptionCta(claudeStep(claude))}
             </>
           )}
         </button>

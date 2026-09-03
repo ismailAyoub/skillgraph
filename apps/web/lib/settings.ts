@@ -67,6 +67,15 @@ export function hasAnthropicKey(): boolean {
   return getAnthropicKey().length > 0;
 }
 
+/** Wake every `onSettingsChange` listener (they re-probe what is reachable). */
+export function notifySettingsChange(): void {
+  try {
+    window.dispatchEvent(new Event(EVENT));
+  } catch {
+    // not in a browser
+  }
+}
+
 /** Subscribe to settings changes made in this tab. Returns an unsubscribe function. */
 export function onSettingsChange(cb: () => void): () => void {
   try {

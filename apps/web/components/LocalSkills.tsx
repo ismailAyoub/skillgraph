@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Input, Pill } from '@/components/ui';
 import {
+  BRIDGE_SERVICE_COMMANDS,
   BRIDGE_START_COMMANDS,
   type BridgeSkill,
   bridgeHealth,
@@ -84,11 +85,16 @@ export function LocalSkills() {
         <div className="space-y-1.5 text-[11px] text-[var(--muted)]">
           <p>
             Edit the skills in <code>~/.claude/skills</code> directly, and let the AI use your
-            Claude subscription. Run the bridge in a terminal, then refresh:
+            Claude subscription. Install the bridge once as a background service (macOS), then
+            refresh:
           </p>
           <pre className="overflow-x-auto rounded border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-[var(--ink)]">
-            {BRIDGE_START_COMMANDS.join('\n')}
+            {BRIDGE_SERVICE_COMMANDS.join('\n')}
           </pre>
+          <p>
+            Or run it in a terminal you keep open:{' '}
+            <code>{BRIDGE_START_COMMANDS[BRIDGE_START_COMMANDS.length - 1]}</code>
+          </p>
           <p>Saves write SKILL.md and the graph back to the folder, with drift protection.</p>
         </div>
       )}

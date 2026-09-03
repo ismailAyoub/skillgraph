@@ -10,6 +10,7 @@ import { lintCommand } from './commands/lint';
 import { registerMcpCommand } from './commands/mcp';
 import { mermaidCommand } from './commands/mermaid';
 import { registerPublishCommand } from './commands/publish';
+import { serviceCommand } from './commands/service';
 
 const program = new Command();
 program
@@ -54,6 +55,26 @@ program
   .option('-d, --dir <dir>', 'skills folder (default: ~/.claude/skills)')
   .option('-p, --port <port>', 'port (default: 4321)', (v) => Number.parseInt(v, 10))
   .action(async (opts) => process.exit(await devCommand(opts)));
+
+const service = program
+  .command('service')
+  .description(
+    'Keep the bridge running in the background (macOS launchd): starts at login, no terminal',
+  );
+const withDevOptions = (c: Command) =>
+  c
+    .option('-d, --dir <dir>', 'skills folder (default: ~/.claude/skills)')
+    .option('-p, --port <port>', 'port (default: 4321)', (v) => Number.parseInt(v, 10));
+withDevOptions(service.command('install').description('Install and start the service')).action(
+  async (opts) => process.exit(await serviceCommand('install', opts)),
+);
+service
+  .command('uninstall')
+  .description('Stop and remove the service')
+  .action(async () => process.exit(await serviceCommand('uninstall')));
+withDevOptions(
+  service.command('status').description('Is the service loaded and the bridge answering?'),
+).action(async (opts) => process.exit(await serviceCommand('status', opts)));
 
 program
   .command('mermaid')
