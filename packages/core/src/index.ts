@@ -16,6 +16,7 @@ export {
 export * from './patch/index';
 export * from './schema/index';
 export { countLines, estimateTokens } from './tokens/index';
+export * from './unpack/index';
 export { contentHash } from './util/hash';
 export { newId, sequentialIds } from './util/ids';
 export { slugify } from './util/slug';

@@ -1,13 +1,4 @@
-import type {
-  Heading,
-  List,
-  ListItem,
-  Paragraph,
-  PhrasingContent,
-  Root,
-  RootContent,
-  Table,
-} from 'mdast';
+import type { List, Paragraph, PhrasingContent, Root, RootContent, Table } from 'mdast';
 import { YAML_TO_FIELD } from '../compiler/frontmatter';
 import {
   blocksToMarkdown,
@@ -27,6 +18,18 @@ import {
 } from '../schema/graph';
 import { newId, sequentialIds } from '../util/ids';
 import { slugify } from '../util/slug';
+import {
+  DONT_RE,
+  GUARD_HEADING,
+  headingText,
+  isSimpleItem,
+  OUTPUT_HEADING,
+  RED_FLAG_HEADING,
+  STEP_HEADING,
+  splitLead,
+  startsWithStrong,
+  VERIFY_HEADING,
+} from './shapes';
 
 export interface ImportInput {
   /** Text files keyed by path relative to the skill root; must include `SKILL.md`. */
@@ -64,42 +67,8 @@ export interface ImportResult {
   report: FidelityReport;
 }
 
-const GUARD_HEADING =
-  /anti-?pattern|guideline|principle|rule|do not|don'?t|avoid|never|always|tone|philosophy|pitfall|gotcha|constraint|red flag/i;
-const STEP_HEADING =
-  /how it works|process|workflow|steps|phase|procedure|instructions|approach|usage/i;
-const OUTPUT_HEADING = /output|template|report|format|structure|deliverable/i;
-const RED_FLAG_HEADING = /red flag/i;
-const VERIFY_HEADING = /verif|checklist|check|before shipping|done when/i;
 const SCRIPT_EXT = /\.(sh|bash|zsh|py|js|mjs|cjs|ts|rb|pl|ps1)$/i;
 const TEXT_EXT = /\.(md|markdown|txt|mdx)$/i;
-const DONT_RE = /^(don'?t|do not|never|avoid|no |stop )/i;
-
-function headingText(h: Heading): string {
-  return inlineToMarkdown(h.children);
-}
-
-function isSimpleItem(item: ListItem): item is ListItem & { children: [Paragraph] } {
-  return item.children.length === 1 && item.children[0]?.type === 'paragraph';
-}
-
-function startsWithStrong(item: ListItem): boolean {
-  const first = item.children[0];
-  return first?.type === 'paragraph' && first.children[0]?.type === 'strong';
-}
-
-function splitLead(p: Paragraph): { lead?: string; rest: PhrasingContent[] } {
-  const first = p.children[0];
-  if (first?.type !== 'strong') return { rest: p.children };
-  const rest = [...p.children.slice(1)];
-  const r0 = rest[0];
-  if (r0 && r0.type === 'text') {
-    const value = r0.value.replace(/^ /, '');
-    if (value.length === 0) rest.shift();
-    else rest[0] = { ...r0, value };
-  }
-  return { lead: inlineToMarkdown(first.children), rest };
-}
 
 function blockLength(b: RootContent): number {
   return blocksToMarkdown([b]).length;

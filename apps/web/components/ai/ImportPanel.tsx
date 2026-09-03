@@ -1,9 +1,11 @@
 'use client';
 
+import { unpackNodes, unpackShape } from '@skillgraph/core';
 import { Button, Field, TextArea } from '@/components/ui';
 import { callAi } from '@/lib/ai';
 import { useAiPanel } from '@/lib/aiStore';
 import { useEditor } from '@/lib/store';
+import { placeUnpacked } from '@/lib/unpackPlace';
 import { applyPatch, Busy, ErrorNote, ProposalCard, useAiRun } from './common';
 
 export function ImportPanel({ disabled }: { disabled: boolean }) {
@@ -16,6 +18,19 @@ export function ImportPanel({ disabled }: { disabled: boolean }) {
 
   const doc = file?.doc;
   const rawNodes = doc?.nodes.filter((n) => n.kind === 'raw_markdown') ?? [];
+  const unpackable = rawNodes.filter((n) => unpackShape(n) !== null);
+
+  /** Deterministic: lists and headings inside raw markdown become nodes, no model involved. */
+  const unpackAll = () => {
+    if (!file || !doc || unpackable.length === 0) return;
+    const patch = unpackNodes(
+      doc,
+      unpackable.map((n) => n.id),
+    );
+    const boxes = placeUnpacked(file, patch);
+    applyPatch(patch);
+    useEditor.getState().setLayout(boxes);
+  };
 
   const build = () => {
     if (!doc || !transcript.trim()) return;
@@ -68,9 +83,16 @@ export function ImportPanel({ disabled }: { disabled: boolean }) {
           <div className="text-[var(--muted)]">
             {rawNodes.length} raw markdown node(s) survived the import unstructured.
           </div>
-          <Button onClick={recover} disabled={disabled || busy}>
-            Recover raw markdown
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {unpackable.length > 0 && (
+              <Button onClick={unpackAll} disabled={busy} data-testid="unpack-raw">
+                Unpack {unpackable.length} into nodes
+              </Button>
+            )}
+            <Button onClick={recover} disabled={disabled || busy}>
+              Recover with AI
+            </Button>
+          </div>
           {recovery && !busy && (
             <ProposalCard
               rationale={recovery.rationale}

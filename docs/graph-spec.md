@@ -629,6 +629,7 @@ Drift detection: `compile` compares each file listed in `compiled.files` with it
 | `graph/orphan-reference` | warning | a reference that is not mentioned, not inlined, not indexed (`referenceIndex` is `none` and no catalog category) and not a URL |
 | `graph/orphan-script` | warning | a script no `runs` edge targets |
 | `graph/loop-needs-until` | warning | empty `until` |
+| `graph/procedure-in-markdown` | warning | a procedure hiding inside one node's markdown, as `unpackShape` detects it (section 20): any `raw_markdown` holding a list or heading, a non-imported `step` embedding three or more sub-steps, an AI-written `reference` whose body is mostly a procedure. Imported references are not flagged: files on disk are progressive disclosure |
 | `graph/reference-needs-read-when` | info | non-inlined, non-imported reference without `readWhen` |
 | `graph/script-needs-run-when` | info | non-imported script without `runWhen` |
 | `profile/inject-requires-claude-code` | error | `inject` node under universal (compiler; node omitted) |
@@ -648,3 +649,31 @@ Drift detection: `compile` compares each file listed in `compiled.files` with it
 | `disclosure/reference-needs-toc` | info | file reference over 300 lines without a contents / table of contents / index heading |
 
 Roadmap (in the plan, not implemented): `body/file-ref-depth` (reference-to-reference chains), `evals/trigger-set-size`, `external/skills-ref` (`skills-ref validate` exit code).
+
+## 20. Unpack
+
+The canvas is the point of the tool, so a procedure must not hide inside one node's markdown: a `raw_markdown` body, a `references/*.md` that is really the workflow, or a step whose instruction embeds a numbered list. `packages/core/src/unpack` turns such a node into the nodes it should have been, deterministically (no model): the decompiler's recognizers, in a permissive mode where every list becomes nodes.
+
+`measureMarkdown(text)` returns `{ items, stepItems, headings, share }`: top-level list items, items that read as steps (every item of an ordered list, or of a bullet list whose items all open with a bold lead; task lists do not count), headings, and the share of the text taken by step-like lists.
+
+`unpackShape(node)` returns that shape when the node is worth unpacking, else `null`:
+
+| Kind | Unpackable when |
+|---|---|
+| `raw_markdown` | two or more list items, or a heading |
+| `reference` | `source: inline` and a body with three or more step-like items making up at least half of it |
+| `step` | an instruction embedding three or more step-like items |
+
+`unpackNode(doc, nodeId, { id? })` returns a `GraphPatch` (never applied for you). Inside the fragment: a heading becomes a `phase` nested by depth (leading prose becomes its `intro`; steps from one list are chained with `next` edges inside such a phase); an ordered list, or any bullet list, becomes one `step` per item (bold lead to `title`, `listStyle: bulleted` on the first step of a bullet list); a task list becomes a `checklist` (`verification` under a verify-like heading, `red-flags` under a red-flag heading); bold-led bullets under a rules-like heading become `guardrail`s; a paragraph becomes a `step`; code, tables and quotes ride along with the step they follow, or stay in a small `raw_markdown` so nothing is lost. Provenance is inherited from the source node.
+
+Placement depends on the kind:
+
+| Kind | Where the nodes go | What happens to the node |
+|---|---|---|
+| `raw_markdown` | its own slot; later siblings shift; when the container uses `next` edges, the incoming and outgoing edges are rewired through the new nodes | removed |
+| `step` | right after the step, as siblings; its outgoing `next` edge (or the container's use of edges) chains the host through the new steps | keeps its title and non-list text; removed when it held nothing but the list |
+| `reference` | right after the step that `reads` it; with no reader, a new root phase named after the file (an enclosing H1 is used as that phase) | removed, with its `reads` edges |
+
+`unpackNodes(doc, ids)` folds several unpacks into one patch. `unpackableNodes(doc)` lists every candidate.
+
+Where it runs: `@skillgraph/ai` appends the unpack ops to every proposal it validates (`toProposalPatch(doc, patch, { unpack })`: interview and from-transcript dissolve raw markdown, procedural references and embedded sub-steps; copilot, critique and the decompile fallback dissolve raw markdown and embedded sub-steps but keep references); the editor's inspector offers "Unpack into nodes" on any unpackable node and the Import panel unpacks leftover raw markdown without a model; the MCP server exposes it as `graph_unpack`; `graph/procedure-in-markdown` flags what is left.

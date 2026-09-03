@@ -63,6 +63,7 @@ describe('mcp server', () => {
         'graph_import',
         'graph_init',
         'graph_lint',
+        'graph_unpack',
         'graph_vocabulary',
         'skill_export',
       ].sort(),
@@ -245,6 +246,51 @@ describe('mcp server', () => {
     const entries = Object.keys(unzipSync(readFileSync(out)));
     expect(entries).toContain('plain-skill/SKILL.md');
     expect(entries.some((k) => k.endsWith('SKILL.graph.json'))).toBe(false);
+  });
+
+  it('unpacks a raw markdown procedure into step nodes', async () => {
+    const patched = await call('graph_apply_patch', {
+      skill: 'release-notes',
+      compile: false,
+      patch: {
+        ops: [
+          {
+            op: 'add',
+            node: {
+              id: 'raw_steps',
+              kind: 'raw_markdown',
+              parentId: 'phase_gather',
+              order: 3,
+              body: '1. **Draft** the notes.\n2. **Check** every link.\n3. **Publish** the page.',
+            },
+          },
+        ],
+      },
+    });
+    expect(patched.isError, patched.text).toBe(false);
+    const count = patched.json<{ nodeCount: number }>().nodeCount;
+    const flagged = await call('graph_lint', { skill: 'release-notes' });
+    expect(flagged.text).toContain('graph/procedure-in-markdown');
+
+    const unpacked = await call('graph_unpack', { skill: 'release-notes', compile: false });
+    expect(unpacked.isError, unpacked.text).toBe(false);
+    const u = unpacked.json<{
+      unpacked: string[];
+      nodeCount: number;
+      inverse: { ops: unknown[] };
+    }>();
+    expect(u.unpacked).toEqual(['raw_steps']);
+    expect(u.nodeCount).toBe(count + 2);
+    expect(u.inverse.ops.length).toBeGreaterThan(0);
+
+    const clean = await call('graph_lint', { skill: 'release-notes' });
+    expect(clean.text).not.toContain('graph/procedure-in-markdown');
+    const got = await call('graph_get', { skill: 'release-notes' });
+    expect(got.text).toContain('"Draft"');
+    expect(got.text).not.toContain('raw_steps');
+    expect((await call('graph_unpack', { skill: 'release-notes' })).text).toContain(
+      'Nothing to unpack',
+    );
   });
 });
 

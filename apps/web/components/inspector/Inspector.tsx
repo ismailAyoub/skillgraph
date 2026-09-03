@@ -1,17 +1,21 @@
 'use client';
 
-import type {
-  CatalogNodeT,
-  ChecklistNodeT,
-  NodeKind,
-  SkillEdge,
-  SkillNode,
+import {
+  type CatalogNodeT,
+  type ChecklistNodeT,
+  type MarkdownShape,
+  type NodeKind,
+  type SkillEdge,
+  type SkillNode,
+  unpackNode,
+  unpackShape,
 } from '@skillgraph/core';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Ungroup } from 'lucide-react';
 import { useState } from 'react';
 import { Button, Field, Input, Pill, Select, TextArea, Toggle } from '@/components/ui';
 import { KIND_META, nodeTitle } from '@/lib/nodeMeta';
 import { useEditor } from '@/lib/store';
+import { placeUnpacked } from '@/lib/unpackPlace';
 import { CodeEditor } from './CodeEditor';
 
 type FieldSpec =
@@ -561,10 +565,25 @@ function EdgesSection({ node }: { node: SkillNode }) {
   );
 }
 
+/** What the unpack button would turn into nodes, in the user's words. */
+function unpackHint(node: SkillNode, shape: MarkdownShape): string {
+  switch (node.kind) {
+    case 'reference':
+      return `A ${shape.stepItems}-step procedure is hiding inside this file.`;
+    case 'step':
+      return `${shape.stepItems} sub-steps are hiding inside this instruction.`;
+    default:
+      return `${shape.items} list item(s) are hiding inside this markdown.`;
+  }
+}
+
 export function Inspector() {
   const file = useEditor((s) => s.file);
   const selectedId = useEditor((s) => s.selectedId);
   const removeNode = useEditor((s) => s.removeNode);
+  const dispatch = useEditor((s) => s.dispatch);
+  const setLayout = useEditor((s) => s.setLayout);
+  const select = useEditor((s) => s.select);
   const lintResult = useEditor((s) => s.lintResult);
   const node =
     file?.doc.nodes.find((n) => n.id === (selectedId ?? 'entry_root')) ??
@@ -573,6 +592,15 @@ export function Inspector() {
   const meta = KIND_META[node.kind as NodeKind];
   const specs = FIELDS[node.kind as NodeKind] ?? [];
   const issues = (lintResult?.diagnostics ?? []).filter((d) => d.nodeId === node.id);
+  const shape = unpackShape(node);
+  const unpack = () => {
+    const patch = unpackNode(file.doc, node.id);
+    const boxes = placeUnpacked(file, patch);
+    dispatch(patch);
+    setLayout(boxes);
+    const first = patch.ops.find((op) => op.op === 'add');
+    select(first && first.op === 'add' ? first.node.id : null);
+  };
   return (
     <div className="space-y-3.5 p-4">
       <div className="flex items-center gap-2">
@@ -592,6 +620,21 @@ export function Inspector() {
               <span className="font-mono">{d.rule}</span> {d.message}
             </div>
           ))}
+        </div>
+      )}
+      {shape && (
+        <div
+          className="flex items-center gap-2 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] px-2 py-1.5 text-[11px] leading-snug"
+          data-testid="unpack-hint"
+        >
+          <span className="flex-1">{unpackHint(node, shape)}</span>
+          <Button
+            onClick={unpack}
+            data-testid="unpack-node"
+            title="Turn this markdown into step nodes on the canvas (undoable)"
+          >
+            <Ungroup size={12} /> Unpack into nodes
+          </Button>
         </div>
       )}
       {specs.map((spec) => (

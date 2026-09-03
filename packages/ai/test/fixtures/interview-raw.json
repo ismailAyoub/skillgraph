@@ -1,0 +1,23 @@
+{
+  "stop_reason": "end_turn",
+  "content": [],
+  "parsed_output": {
+    "question": "Where should the summary be posted?",
+    "patch": {
+      "ops": [
+        {
+          "op": "add",
+          "id": null,
+          "node": "{\"id\":\"raw_procedure\",\"kind\":\"raw_markdown\",\"parentId\":\"phase_review\",\"order\":2,\"body\":\"1. **Check the tests** ran on the branch.\\n2. **Read the description** and compare it with the diff.\\n3. **List the risks** you see.\"}",
+          "data": null,
+          "edge": null,
+          "parentId": null,
+          "order": null
+        }
+      ]
+    },
+    "rationale": "The user described the review procedure.",
+    "confidence": 0.55,
+    "done": false
+  }
+}

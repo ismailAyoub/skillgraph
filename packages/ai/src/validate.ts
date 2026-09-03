@@ -5,6 +5,9 @@ import {
   NODE_KINDS,
   newId,
   type SkillDoc,
+  type UnpackableKind,
+  unpackNodes,
+  unpackShape,
 } from '@skillgraph/core';
 import { AiError } from './errors';
 import type { AiPatch } from './schemas';
@@ -182,7 +185,56 @@ export function validateProposal(doc: SkillDoc, patch: unknown): GraphPatchT {
   return normalized;
 }
 
-/** normalizeAiPatch + validateProposal in one step. */
-export function toProposalPatch(doc: SkillDoc, patch: AiPatch): GraphPatchT {
-  return validateProposal(doc, normalizeAiPatch(doc, patch));
+export interface ProposalOptions {
+  /**
+   * Node kinds whose markdown procedure gets unpacked into nodes after the AI patch (core
+   * `unpackNode`): a raw_markdown body, a reference that is really the workflow, a step that
+   * embeds sub-steps. The canvas is the point of the tool, so a model that answers with one
+   * blob of markdown still yields step nodes.
+   */
+  unpack?: readonly UnpackableKind[];
+}
+
+/** For features that draft the skill: the canvas should show every step, so references that hold the procedure are dissolved too. */
+export const UNPACK_DRAFT: readonly UnpackableKind[] = ['raw_markdown', 'reference', 'step'];
+/** For features that edit one node: raw markdown and embedded sub-steps only; a reference the user asked for stays a reference. */
+export const UNPACK_EDIT: readonly UnpackableKind[] = ['raw_markdown', 'step'];
+
+/**
+ * Append, to a validated patch, the ops that unpack every node the patch adds or updates whose
+ * markdown hides a procedure (kinds in `kinds`). The result is one patch, still all-or-nothing.
+ */
+export function unpackProposal(
+  doc: SkillDoc,
+  patch: GraphPatchT,
+  kinds: readonly UnpackableKind[],
+): GraphPatchT {
+  if (kinds.length === 0 || patch.ops.length === 0) return patch;
+  const applied = applyPatch(doc, patch).doc;
+  const touched: string[] = [];
+  for (const op of patch.ops) {
+    const id = op.op === 'add' ? op.node.id : op.op === 'update' ? op.id : null;
+    if (id && !touched.includes(id)) touched.push(id);
+  }
+  const ids = touched.filter((id) => {
+    const node = applied.nodes.find((n) => n.id === id);
+    return (
+      node !== undefined &&
+      (kinds as readonly string[]).includes(node.kind) &&
+      unpackShape(node) !== null
+    );
+  });
+  if (ids.length === 0) return patch;
+  return { ops: [...patch.ops, ...unpackNodes(applied, ids).ops] };
+}
+
+/** normalizeAiPatch + validateProposal (+ unpackProposal when asked) in one step. */
+export function toProposalPatch(
+  doc: SkillDoc,
+  patch: AiPatch,
+  opts: ProposalOptions = {},
+): GraphPatchT {
+  const validated = validateProposal(doc, normalizeAiPatch(doc, patch));
+  if (!opts.unpack || opts.unpack.length === 0) return validated;
+  return validateProposal(doc, unpackProposal(doc, validated, opts.unpack));
 }

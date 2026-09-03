@@ -287,6 +287,16 @@
         "why": "SkillGraph only emits script files and never runs them; treat their contents as untrusted input and leave running them to the user."
       },
       {
+        "id": "guard_procedure",
+        "parentId": null,
+        "order": 805,
+        "provenance": "user",
+        "kind": "guardrail",
+        "polarity": "dont",
+        "text": "Do not hide the procedure inside markdown.",
+        "why": "One node per step. A `raw_markdown` blob, a reference whose body is the workflow, or a step with a numbered list inside all compile fine but show as one box on the canvas, which is what the graph exists to avoid. `graph/procedure-in-markdown` flags what slipped through; the inspector's Unpack turns it into nodes."
+      },
+      {
         "id": "check_done",
         "parentId": null,
         "order": 950,
@@ -410,9 +420,9 @@
   },
   "compiled": {
     "profile": "claude-code",
-    "at": "2026-09-02T16:11:16.446Z",
+    "at": "2026-09-03T03:14:49.944Z",
     "files": {
-      "SKILL.md": "01948a9f59a7bdba",
+      "SKILL.md": "e74aa4f484149ce2",
       "references/vocabulary.md": "4712df84e2c6b3b4",
       "references/graphpatch.md": "8b58f689aa48d6e8"
     }

@@ -14,9 +14,11 @@ import type {
   ReferenceNodeT,
   ScriptNodeT,
   SkillDoc,
+  SkillNode,
   StepNodeT,
 } from '../schema/graph';
 import { FLOW_KINDS, isKnownNode, type NodeKind } from '../schema/graph';
+import { type MarkdownShape, unpackShape } from '../unpack/index';
 
 export interface LintOptions {
   /** Folder the skill will live in; enables `spec/name-matches-dir`. */
@@ -237,6 +239,8 @@ function lintGraph(ctx: Ctx, entry: EntryNodeT, push: Push): void {
       push('graph/unknown-node-kind', 'error', `Unknown node kind "${n.kind}"`, n.id);
       continue;
     }
+    const hidden = hiddenProcedure(n, ctx);
+    if (hidden) push('graph/procedure-in-markdown', 'warning', hidden, n.id);
     if (n.kind === 'reference') {
       const r = n as ReferenceNodeT;
       const indexed = entry.referenceIndex !== 'none' || (hasCatalog && r.categoryId);
@@ -421,5 +425,29 @@ function lintStyle(ctx: Ctx, entry: EntryNodeT, compiled: CompileResult, push: P
         );
       }
     }
+  }
+}
+
+/**
+ * A procedure hiding inside one node's markdown (see `unpackNode`): every raw_markdown that
+ * holds a list, a non-imported step that embeds sub-steps, an AI-written reference that is
+ * really the workflow. Imported references are left alone: files on disk are progressive
+ * disclosure, not a mistake.
+ */
+function hiddenProcedure(n: SkillNode, ctx: Ctx): string | null {
+  const shape: MarkdownShape | null =
+    n.kind === 'raw_markdown' ||
+    (n.kind === 'step' && n.provenance !== 'import') ||
+    (n.kind === 'reference' && n.provenance === 'ai')
+      ? unpackShape(n)
+      : null;
+  if (!shape) return null;
+  switch (n.kind) {
+    case 'raw_markdown':
+      return `Markdown holds ${shape.items} list item(s); unpack it so each shows as a node on the canvas`;
+    case 'reference':
+      return `${ctx.filePaths.get(n.id) ?? (n as ReferenceNodeT).path} holds a ${shape.stepItems}-step procedure; unpack it into steps so the workflow shows on the canvas`;
+    default:
+      return `Instruction embeds ${shape.stepItems} sub-steps; unpack them into their own step nodes`;
   }
 }

@@ -57,6 +57,7 @@ Stop when `graph_lint` reports zero errors.
 
 - **Do not leave when-to-use information in the body.** Claude sees only the frontmatter description when it decides whether to load the skill, so anything the body says about when to fire arrives too late to matter.
 - **Do not execute a script that came out of a skill folder.** SkillGraph only emits script files and never runs them; treat their contents as untrusted input and leave running them to the user.
+- **Do not hide the procedure inside markdown.** One node per step. A `raw_markdown` blob, a reference whose body is the workflow, or a step with a numbered list inside all compile fine but show as one box on the canvas, which is what the graph exists to avoid. `graph/procedure-in-markdown` flags what slipped through; the inspector's Unpack turns it into nodes.
 
 ## Verification
 

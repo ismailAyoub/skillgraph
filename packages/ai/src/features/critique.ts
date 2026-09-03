@@ -9,7 +9,7 @@ import { type CallContext, callStructured } from '../client';
 import { describeGraphForPrompt, systemPrompt, wrapUntrusted } from '../prompt';
 import { CritiqueOutputSchema } from '../schemas';
 import type { CritiqueFinding, CritiqueResult } from '../types';
-import { toProposalPatch } from '../validate';
+import { toProposalPatch, UNPACK_EDIT } from '../validate';
 
 const ROLE = `You are a senior reviewer of Agent Skills (SKILL.md folders used by Claude Code and other agents). You review a skill expressed as a SkillGraph and its compiled SKILL.md and return findings, each ideally with a concrete GraphPatch fix.
 
@@ -58,7 +58,7 @@ export async function critique(
     if (f.nodeId) finding.nodeId = f.nodeId;
     if (f.patch && f.patch.ops.length > 0) {
       try {
-        finding.patch = toProposalPatch(input.doc, f.patch);
+        finding.patch = toProposalPatch(input.doc, f.patch, { unpack: UNPACK_EDIT });
       } catch (err) {
         finding.message = `${finding.message} (proposed fix dropped: ${(err as Error).message})`;
       }
