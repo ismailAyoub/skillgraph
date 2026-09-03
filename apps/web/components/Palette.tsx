@@ -32,16 +32,16 @@ export function Palette() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto p-2 text-xs">
-      <div className="mb-2 text-[10px] uppercase tracking-wide text-[var(--muted)]">
-        Drag onto the canvas, or click to add after the selection
+    <div className="flex h-full flex-col gap-4 overflow-y-auto p-4 text-xs">
+      <div className="text-[11.5px] leading-[1.45] text-[var(--faint)]">
+        Click to add after the selection, or drag onto the canvas.
       </div>
       {GROUPS.map((g) => (
-        <div key={g.id} className="mb-3">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+        <div key={g.id} className="flex flex-col gap-1.5">
+          <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--faint)]">
             {g.label}
           </div>
-          <div className="grid grid-cols-2 gap-1">
+          <div className="grid grid-cols-2 gap-1.5">
             {PALETTE_ORDER.filter((k) => KIND_META[k].group === g.id).map((k) => {
               const m = KIND_META[k];
               return (
@@ -55,10 +55,10 @@ export function Palette() {
                     e.dataTransfer.effectAllowed = 'move';
                   }}
                   onClick={() => onAdd(k)}
-                  className="flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1.5 text-left hover:border-[var(--accent)]"
+                  className="flex items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--card)] px-2 py-2 text-left text-[12.5px] hover:border-[var(--ink)]"
                 >
                   <span
-                    className="inline-block h-2.5 w-2.5 rounded-sm"
+                    className={`inline-block h-2 w-2 ${g.id === 'files' ? 'rounded-[2px]' : 'rounded-full'}`}
                     style={{ background: m.color }}
                   />
                   <span>{m.label}</span>

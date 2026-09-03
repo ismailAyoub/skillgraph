@@ -109,7 +109,7 @@ test('dashboard chat drafts the skill and Create skill opens the editor on that 
 }) => {
   await page.goto('/app');
   const card = page.getByTestId('ai-start');
-  await expect(card).toContainText('Build a skill by chatting');
+  await expect(card).toContainText('What should this skill do?');
   // Without AI connected the card points at Connect AI and the dialog opens from it.
   await expect(card.getByTestId('ai-start-connect')).toBeVisible();
   await card.getByTestId('ai-start-connect').click();
@@ -177,7 +177,7 @@ test('dashboard shows the account bar and the shared-skill page handles unknown 
   page,
 }) => {
   await page.goto('/app');
-  await expect(page.getByText('Dashboard')).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Dashboard' })).toBeVisible();
   // With Supabase env set a Sign in button appears; without it the bar stays minimal.
   const signIn = page.getByRole('button', { name: /sign in/i });
   const enabled = (await signIn.count()) > 0;

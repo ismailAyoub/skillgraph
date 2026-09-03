@@ -56,7 +56,7 @@ export function LocalSkills() {
   };
 
   return (
-    <section className="mb-8 rounded-lg border border-[var(--line)] bg-white p-4">
+    <section className="mb-8 rounded-lg border border-[var(--line)] bg-[var(--card)] p-4">
       <div className="mb-2 flex items-center gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           <HardDrive size={16} /> Local skills
@@ -86,13 +86,13 @@ export function LocalSkills() {
             Edit the skills in <code>~/.claude/skills</code> directly, and let the AI use your
             Claude subscription. Run the bridge in a terminal, then refresh:
           </p>
-          <pre className="overflow-x-auto rounded border border-[var(--line)] bg-neutral-50 px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-[var(--ink)]">
+          <pre className="overflow-x-auto rounded border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 font-mono text-[10.5px] leading-relaxed text-[var(--ink)]">
             {BRIDGE_START_COMMANDS.join('\n')}
           </pre>
           <p>Saves write SKILL.md and the graph back to the folder, with drift protection.</p>
         </div>
       )}
-      {error && <p className="text-[11px] text-red-700">{error}</p>}
+      {error && <p className="text-[11px] text-[var(--err)]">{error}</p>}
       {health && skills.length === 0 && (
         <p className="text-[11px] text-[var(--muted)]">No skills in that folder yet.</p>
       )}

@@ -40,7 +40,7 @@ export function CopyBlock({ lines, label }: { lines: string[]; label: string }) 
       <button
         type="button"
         onClick={copy}
-        className="absolute top-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-white px-2 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
+        className="absolute top-2.5 right-2.5 inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] bg-[var(--card)] px-2 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:text-[var(--ink)]"
         aria-live="polite"
       >
         {copied ? <Check size={12} /> : <Copy size={12} />}

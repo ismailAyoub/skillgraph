@@ -21,8 +21,8 @@ export function heatStyle(heat: NodeHeat): {
 } {
   if (heat.visits === 0 || heat.ratio <= 0) {
     return {
-      background: '#ececea',
-      color: '#8a8a90',
+      background: '#d9d1c2',
+      color: '#8a8377',
       title: 'Never visited in eval traces',
       dashed: true,
     };
@@ -30,8 +30,8 @@ export function heatStyle(heat: NodeHeat): {
   const alpha = 0.18 + 0.72 * heat.ratio;
   const pct = Math.round(heat.ratio * 100);
   return {
-    background: `rgba(31, 138, 76, ${alpha.toFixed(2)})`,
-    color: heat.ratio > 0.5 ? '#ffffff' : '#145c33',
+    background: `rgba(47, 138, 76, ${alpha.toFixed(2)})`,
+    color: '#2f5d3a',
     title: `Visited in ${heat.visits} of ${heat.runs} run(s) (${pct}%)`,
     dashed: false,
   };
@@ -53,7 +53,7 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
   return (
     <div
       className={`sg-node ${selected ? 'selected' : ''} ${hs?.dashed ? 'sg-node-cold' : ''}`}
-      style={{ borderLeft: `4px solid ${hs ? (hs.dashed ? '#c8c8c4' : '#1f8a4c') : meta.color}` }}
+      style={isEntry ? { borderColor: selected ? undefined : '#1f1d1a' } : undefined}
       title={hs?.title}
     >
       {!isEntry && !isFile && (
@@ -61,7 +61,7 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
           id="in"
           type="target"
           position={Position.Top}
-          style={{ background: '#495057', width: 8, height: 8 }}
+          style={{ background: '#8a8377', width: 8, height: 8 }}
         />
       )}
       {isFile && (
@@ -69,7 +69,7 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
           id="side-in"
           type="target"
           position={Position.Left}
-          style={{ background: '#1c7ed6', width: 8, height: 8 }}
+          style={{ background: '#3f5f8a', width: 8, height: 8 }}
         />
       )}
       {!isEntry && !isFile && !isAttach && (
@@ -77,17 +77,11 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
           id="side-in"
           type="target"
           position={Position.Left}
-          style={{ background: '#c53030', width: 6, height: 6, top: '70%' }}
+          style={{ background: '#b04a3a', width: 6, height: 6, top: '70%' }}
         />
       )}
-      <div
-        className="sg-node-head"
-        style={
-          hs
-            ? { background: hs.background, color: hs.color }
-            : { background: meta.bg, color: meta.color }
-        }
-      >
+      <div className="sg-node-head" style={hs ? { color: hs.color } : undefined}>
+        <span className="sg-node-dot" style={{ background: hs ? hs.background : meta.color }} />
         <span>{meta.short}</span>
         {hs && (
           <span className="normal-case tracking-normal opacity-90">
@@ -96,16 +90,20 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
         )}
         {issues > 0 && (
           <span
-            className={`ml-auto rounded-full px-1.5 text-[10px] ${severity === 'error' ? 'bg-red-600 text-white' : severity === 'warning' ? 'bg-amber-500 text-white' : 'bg-neutral-300 text-neutral-800'}`}
+            className={`ml-auto rounded-full px-1.5 text-[10px] tracking-normal ${severity === 'error' ? 'bg-[var(--err)] text-white' : severity === 'warning' ? 'bg-[var(--warn)] text-white' : 'bg-[var(--line-strong)] text-[var(--ink)]'}`}
           >
             {issues}
           </span>
         )}
       </div>
       <div className="sg-node-body">
-        <div className="font-semibold">{nodeTitle(node)}</div>
+        <div className={isEntry ? 'font-serif text-[15px] font-medium' : 'font-medium'}>
+          {nodeTitle(node)}
+        </div>
         {summary && (
-          <div className="mt-0.5 line-clamp-3 text-[11px] text-[var(--muted)]">{summary}</div>
+          <div className="mt-0.5 line-clamp-3 text-[11px] leading-[1.45] text-[var(--muted)]">
+            {summary}
+          </div>
         )}
       </div>
       {!isFile && (
@@ -114,7 +112,7 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
           type="source"
           position={Position.Bottom}
           style={{
-            background: node.kind === 'decision' ? '#b7791f' : '#495057',
+            background: node.kind === 'decision' ? '#a8722a' : '#8a8377',
             width: 8,
             height: 8,
           }}
@@ -125,7 +123,7 @@ function SkillNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
           id="side-out"
           type="source"
           position={Position.Right}
-          style={{ background: isAttach ? '#c53030' : '#1c7ed6', width: 8, height: 8 }}
+          style={{ background: isAttach ? '#b04a3a' : '#3f5f8a', width: 8, height: 8 }}
         />
       )}
     </div>
@@ -146,7 +144,7 @@ function GroupNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
     <div
       className={`sg-group h-full w-full ${selected ? 'selected' : ''}`}
       style={{
-        borderColor: selected ? undefined : hs ? (hs.dashed ? '#c8c8c4' : '#1f8a4c') : meta.color,
+        borderColor: selected ? undefined : hs ? (hs.dashed ? '#c8c8c4' : '#2f8a4c') : undefined,
       }}
       title={hs?.title}
     >
@@ -154,19 +152,19 @@ function GroupNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
         id="in"
         type="target"
         position={Position.Top}
-        style={{ background: '#495057', width: 8, height: 8 }}
+        style={{ background: '#8a8377', width: 8, height: 8 }}
       />
       <Handle
         id="side-in"
         type="target"
         position={Position.Left}
-        style={{ background: '#c53030', width: 6, height: 6 }}
+        style={{ background: '#b04a3a', width: 6, height: 6 }}
       />
       <div className="sg-group-title" style={{ color: meta.color }}>
         {meta.short}: {title}
         {issues > 0 && (
           <span
-            className={`ml-2 rounded-full px-1.5 ${severity === 'error' ? 'bg-red-600 text-white' : 'bg-amber-500 text-white'}`}
+            className={`ml-2 rounded-full px-1.5 tracking-normal ${severity === 'error' ? 'bg-[var(--err)] text-white' : 'bg-[var(--warn)] text-white'}`}
           >
             {issues}
           </span>
@@ -176,13 +174,13 @@ function GroupNodeComponent({ data, selected }: NodeProps<SkillRFNode>) {
         id="out"
         type="source"
         position={Position.Bottom}
-        style={{ background: '#495057', width: 8, height: 8 }}
+        style={{ background: '#8a8377', width: 8, height: 8 }}
       />
       <Handle
         id="side-out"
         type="source"
         position={Position.Right}
-        style={{ background: '#1c7ed6', width: 8, height: 8 }}
+        style={{ background: '#3f5f8a', width: 8, height: 8 }}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { slugify } from '@skillgraph/core';
-import { FolderOpen, Plus, Trash2, Upload } from 'lucide-react';
+import { FolderOpen, Trash2, Upload } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -9,10 +9,30 @@ import { AccountBar } from '@/components/AccountBar';
 import { AiStart } from '@/components/AiStart';
 import { CloudSkills } from '@/components/CloudSkills';
 import { LocalSkills } from '@/components/LocalSkills';
-import { Button, Field, Input, Pill, Select } from '@/components/ui';
+import { Button, Field, Input, Select } from '@/components/ui';
 import { deleteSkill, listSkills, type SkillIndexEntry, saveSkill } from '@/lib/db';
 import { importFiles } from '@/lib/io';
 import { TEMPLATES } from '@/lib/templates';
+
+function SectionTitle({ children, count }: { children: string; count?: number }) {
+  return (
+    <div className="flex items-baseline gap-2.5">
+      <h2 className="font-serif text-[22px] font-normal">{children}</h2>
+      {count !== undefined && (
+        <span className="font-mono text-[12px] text-[var(--faint)]">{count}</span>
+      )}
+    </div>
+  );
+}
+
+function when(ts: number): string {
+  const d = Date.now() - ts;
+  if (d < 60_000) return 'just now';
+  if (d < 3_600_000) return `${Math.round(d / 60_000)} min ago`;
+  if (d < 86_400_000) return `${Math.round(d / 3_600_000)} h ago`;
+  if (d < 7 * 86_400_000) return `${Math.round(d / 86_400_000)} d ago`;
+  return new Date(ts).toLocaleDateString();
+}
 
 export function Home() {
   const router = useRouter();
@@ -57,23 +77,62 @@ export function Home() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl p-8">
+    <div className="min-h-screen">
       <AccountBar />
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold">SkillGraph</h1>
-        <p className="text-sm text-[var(--muted)]">
-          Draw an Agent Skill as a graph. Compile it to SKILL.md. See what the agent will read.
-        </p>
-      </header>
+      <main className="mx-auto max-w-5xl px-8 pb-16">
+        <AiStart />
 
-      <AiStart />
+        <section className="mt-6 grid grid-cols-[1.3fr_1fr_1fr] gap-14 border-t border-[var(--line)] pt-10">
+          <div className="flex flex-col gap-3">
+            <SectionTitle count={skills.length}>Your skills</SectionTitle>
+            {skills.length === 0 && (
+              <p className="text-[13px] text-[var(--muted)]">
+                Nothing yet. Chat above, start from a template, or import one.
+              </p>
+            )}
+            <ul className="flex flex-col">
+              {skills.map((s) => (
+                <li
+                  key={s.id}
+                  className="group flex items-center gap-3 border-t border-[var(--line)] py-3 last:border-b"
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => router.push(`/edit/${s.id}`)}
+                  >
+                    <div className="truncate text-[14px] font-medium">{s.name}</div>
+                    <div className="line-clamp-1 text-[12px] text-[var(--muted)]">
+                      {s.description}
+                    </div>
+                  </button>
+                  <span className="font-mono text-[11.5px] text-[var(--faint)]">
+                    {s.cloudId ? 'cloud · ' : ''}
+                    {s.nodeCount} nodes · {when(s.updatedAt)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    title="Delete"
+                    className="opacity-0 group-hover:opacity-100"
+                    onClick={async () => {
+                      if (confirm(`Delete ${s.name}? This only removes it from this browser.`)) {
+                        await deleteSkill(s.id);
+                        await refresh();
+                      }
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-      <section className="mb-8 grid grid-cols-2 gap-6">
-        <div className="rounded-lg border border-[var(--line)] bg-white p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-            <Plus size={16} /> Start from a template
-          </h2>
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
+            <SectionTitle>Start from a template</SectionTitle>
+            <p className="text-[13px] leading-[1.55] text-[var(--muted)]">
+              {TEMPLATES.find((t) => t.id === template)?.description}
+            </p>
             <Field label="Name" hint="kebab-case">
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </Field>
@@ -86,91 +145,54 @@ export function Home() {
                 ))}
               </Select>
             </Field>
-            <p className="text-[11px] text-[var(--muted)]">
-              {TEMPLATES.find((t) => t.id === template)?.description}
-            </p>
-            <Button variant="primary" onClick={() => void create()}>
+            <Button variant="primary" onClick={() => void create()} className="self-start">
               Create
             </Button>
           </div>
-        </div>
-        <div className="rounded-lg border border-[var(--line)] bg-white p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-            <Upload size={16} /> Import an existing skill
-          </h2>
-          <p className="mb-3 text-[11px] text-[var(--muted)]">
-            A skill folder, a zip / .skill package, or a single SKILL.md. Unrecognized prose is kept
-            verbatim, so nothing is lost.
-          </p>
-          <div className="flex gap-2">
-            <Button onClick={() => dirRef.current?.click()}>
-              <FolderOpen size={14} /> Folder
-            </Button>
-            <Button onClick={() => zipRef.current?.click()}>
-              <Upload size={14} /> Zip or SKILL.md
-            </Button>
-          </div>
-          <input
-            ref={zipRef}
-            type="file"
-            accept=".zip,.skill,.md,text/markdown"
-            multiple
-            hidden
-            onChange={(e) => void onImport(e.target.files)}
-          />
-          <input
-            ref={dirRef}
-            type="file"
-            hidden
-            {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
-            onChange={(e) => void onImport(e.target.files)}
-          />
-          {busy && <p className="mt-2 text-[11px] text-[var(--muted)]">{busy}</p>}
-          {error && <p className="mt-2 text-[11px] text-red-700">{error}</p>}
-        </div>
-      </section>
 
-      <CloudSkills />
-
-      <LocalSkills />
-
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">Your skills</h2>
-        {skills.length === 0 && (
-          <p className="text-xs text-[var(--muted)]">Nothing yet. Create one or import one.</p>
-        )}
-        <ul className="divide-y divide-[var(--line)] rounded-lg border border-[var(--line)] bg-white">
-          {skills.map((s) => (
-            <li key={s.id} className="flex items-center gap-3 px-4 py-2">
-              <button
-                type="button"
-                className="flex-1 text-left"
-                onClick={() => router.push(`/edit/${s.id}`)}
-              >
-                <div className="text-sm font-semibold">{s.name}</div>
-                <div className="line-clamp-1 text-[11px] text-[var(--muted)]">{s.description}</div>
-              </button>
-              {s.cloudId && <Pill tone="ok">cloud</Pill>}
-              <Pill>{s.nodeCount} nodes</Pill>
-              <span className="text-[10px] text-[var(--muted)]">
-                {new Date(s.updatedAt).toLocaleString()}
-              </span>
-              <Button
-                variant="ghost"
-                title="Delete"
-                onClick={async () => {
-                  if (confirm(`Delete ${s.name}? This only removes it from this browser.`)) {
-                    await deleteSkill(s.id);
-                    await refresh();
-                  }
-                }}
-              >
-                <Trash2 size={14} />
+          <div className="flex flex-col gap-3">
+            <SectionTitle>Import a skill</SectionTitle>
+            <p className="text-[13px] leading-[1.55] text-[var(--muted)]">
+              A folder, a zip or a single SKILL.md. Nothing is lost; unrecognized prose stays
+              verbatim.
+            </p>
+            <div className="flex gap-2">
+              <Button onClick={() => dirRef.current?.click()}>
+                <FolderOpen size={14} /> Folder
               </Button>
-            </li>
-          ))}
-        </ul>
-      </section>
+              <Button onClick={() => zipRef.current?.click()}>
+                <Upload size={14} /> Zip or SKILL.md
+              </Button>
+            </div>
+            <input
+              ref={zipRef}
+              type="file"
+              accept=".zip,.skill,.md,text/markdown"
+              multiple
+              hidden
+              onChange={(e) => void onImport(e.target.files)}
+            />
+            <input
+              ref={dirRef}
+              type="file"
+              hidden
+              {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
+              onChange={(e) => void onImport(e.target.files)}
+            />
+            {busy && <p className="text-[12px] text-[var(--muted)]">{busy}</p>}
+            {error && <p className="text-[12px] text-[var(--err)]">{error}</p>}
+          </div>
+        </section>
+
+        <div className="mt-12 flex flex-col gap-8">
+          <div id="cloud">
+            <CloudSkills />
+          </div>
+          <div id="local">
+            <LocalSkills />
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

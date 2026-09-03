@@ -1,17 +1,29 @@
 @import "tailwindcss";
 @import "@xyflow/react/dist/style.css";
 
+/* Paper: warm cream surfaces, ink text, one moss accent. Node kinds keep semantic hues. */
 :root {
-  --bg: #f7f7f5;
-  --panel: #ffffff;
-  --ink: #1b1b1f;
-  --muted: #6b6b73;
-  --line: #e4e4e0;
-  --accent: #3b5bdb;
-  --accent-soft: #e8edff;
-  --ok: #1f8a4c;
-  --warn: #b7791f;
-  --err: #c53030;
+  --bg: #f6f2ea;
+  --panel: #fbf9f4;
+  --card: #fffdf9;
+  --ink: #1f1d1a;
+  --muted: #6d675d;
+  --faint: #8a8377;
+  --line: #e3dccf;
+  --line-strong: #d9d1c2;
+  --accent: #2f5d3a;
+  --accent-soft: #e4ecdf;
+  --ok: #2f8a4c;
+  --warn: #a8722a;
+  --warn-soft: #f5ead8;
+  --err: #b04a3a;
+  --err-soft: #f6e2de;
+}
+
+@theme inline {
+  --font-sans: var(--font-ui), "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: var(--font-display), Newsreader, Georgia, serif;
+  --font-mono: var(--font-code), "IBM Plex Mono", Menlo, Consolas, monospace;
 }
 
 html,
@@ -19,7 +31,7 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
 }
 
@@ -32,17 +44,16 @@ body {
 }
 
 .sg-node {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--card);
   min-width: 180px;
   max-width: 260px;
 }
 
 .sg-node.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 /* Heatmap overlay: nodes never visited in eval traces. */
@@ -56,25 +67,32 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--line);
+  padding: 6px 10px 0;
+  font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
-  border-radius: 8px 8px 0 0;
+  color: var(--faint);
+  border-radius: 10px 10px 0 0;
+}
+
+.sg-node-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
 }
 
 .sg-node-body {
-  padding: 6px 8px;
+  padding: 3px 10px 8px;
   line-height: 1.35;
   word-break: break-word;
 }
 
 .sg-group {
-  border: 1.5px dashed var(--line);
+  border: 1px dashed #b8b1a5;
   border-radius: 12px;
-  background: rgb(255 255 255 / 0.55);
+  background: rgb(255 253 249 / 0.6);
 }
 
 .sg-group.selected {
@@ -88,9 +106,11 @@ body {
   transform: translateY(-50%);
   background: var(--bg);
   padding: 0 6px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
 }
 
 .sg-diag-error {
@@ -142,13 +162,13 @@ body {
   margin: 0.15em 0;
 }
 .prose-preview code {
-  background: #f0f0ee;
+  background: #efebe3;
   padding: 0 3px;
   border-radius: 3px;
   font-size: 0.92em;
 }
 .prose-preview pre {
-  background: #f0f0ee;
+  background: #efebe3;
   padding: 8px;
   border-radius: 6px;
   overflow-x: auto;
@@ -179,13 +199,13 @@ body {
    a mono face and the hero's node <-> line hover link.
 --------------------------------------------------------------------------- */
 :root {
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  --code-bg: #f0f0ee;
-  --n-entry: #3b5bdb;
-  --n-step: #1f8a4c;
-  --n-decision: #b7791f;
-  --n-reference: #1c7ed6;
-  --n-phase: #6b6b73;
+  --mono: var(--font-mono);
+  --code-bg: #efebe3;
+  --n-entry: #1f1d1a;
+  --n-step: #2f5d3a;
+  --n-decision: #a8722a;
+  --n-reference: #3f5f8a;
+  --n-phase: #8a8377;
 }
 
 .mk {
@@ -194,17 +214,19 @@ body {
 }
 
 .mk-display {
-  font-size: clamp(38px, 6vw, 64px);
-  line-height: 1;
-  letter-spacing: -0.035em;
-  font-weight: 700;
+  font-family: var(--font-serif);
+  font-size: clamp(40px, 6vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  font-weight: 400;
 }
 
 .mk-h2 {
-  font-size: clamp(24px, 3vw, 32px);
+  font-family: var(--font-serif);
+  font-size: clamp(26px, 3vw, 36px);
   line-height: 1.1;
-  letter-spacing: -0.025em;
-  font-weight: 700;
+  letter-spacing: -0.015em;
+  font-weight: 400;
 }
 
 .mk-eyebrow {
@@ -212,7 +234,7 @@ body {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--faint);
 }
 
 .mk-mono {

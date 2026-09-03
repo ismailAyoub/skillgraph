@@ -65,7 +65,7 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
             key={i}
             className={`rounded border px-2 py-1.5 leading-snug ${
               t.role === 'assistant'
-                ? 'border-[var(--line)] bg-white'
+                ? 'border-[var(--line)] bg-[var(--card)]'
                 : 'border-transparent bg-[var(--accent-soft)] text-[var(--accent)]'
             }`}
           >
@@ -76,7 +76,7 @@ export function InterviewPanel({ disabled }: { disabled: boolean }) {
       {busy && <Busy label="Listening…" />}
       <ErrorNote error={error} />
       {step && !busy && (
-        <div className="space-y-1.5 rounded border border-[var(--line)] bg-neutral-50 p-2">
+        <div className="space-y-1.5 rounded border border-[var(--line)] bg-[var(--panel)] p-2">
           <div className="flex items-center gap-2">
             <Pill tone={step.confidence >= 0.7 ? 'ok' : step.confidence >= 0.4 ? 'warn' : 'muted'}>
               confidence {Math.round(step.confidence * 100)}%

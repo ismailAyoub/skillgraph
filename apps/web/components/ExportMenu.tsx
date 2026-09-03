@@ -55,13 +55,13 @@ export function ExportMenu({ file }: { file: SkillFile }) {
         <Download size={14} /> Export <ChevronDown size={12} />
       </Button>
       {open && (
-        <div className="absolute right-0 z-20 mt-1 w-64 rounded-md border border-[var(--line)] bg-white p-1 shadow-lg">
+        <div className="absolute right-0 z-20 mt-1 w-64 rounded-md border border-[var(--line)] bg-[var(--card)] p-1 shadow-lg">
           {FORMATS.map((f) => (
             <button
               key={f.id}
               type="button"
               onClick={() => run(f.id)}
-              className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-neutral-100"
+              className="block w-full rounded px-2 py-1.5 text-left text-xs hover:bg-[var(--panel)]"
             >
               <div className="font-medium">{f.label}</div>
               <div className="text-[10px] text-[var(--muted)]">{f.hint}</div>

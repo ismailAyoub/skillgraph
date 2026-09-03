@@ -67,7 +67,7 @@ export function ProposalCard({
   applyLabel?: string;
 }) {
   return (
-    <div className="space-y-2 rounded border border-[var(--line)] bg-white p-2">
+    <div className="space-y-2 rounded border border-[var(--line)] bg-[var(--card)] p-2">
       {rationale && <p className="leading-snug">{rationale}</p>}
       <OpSummary patch={patch} />
       <div className="flex gap-2">
@@ -83,7 +83,7 @@ export function ProposalCard({
 export function ErrorNote({ error }: { error: string | null }) {
   if (!error) return null;
   return (
-    <div className="rounded border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] text-red-700">
+    <div className="rounded border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] text-[var(--err)]">
       {error}
     </div>
   );

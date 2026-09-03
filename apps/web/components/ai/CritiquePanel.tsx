@@ -66,7 +66,7 @@ export function CritiquePanel({ disabled }: { disabled: boolean }) {
             return (
               <div
                 key={key}
-                className="space-y-1.5 rounded border border-[var(--line)] bg-white p-2"
+                className="space-y-1.5 rounded border border-[var(--line)] bg-[var(--card)] p-2"
               >
                 <div className="flex items-center gap-1.5">
                   <SeverityPill severity={f.severity} />

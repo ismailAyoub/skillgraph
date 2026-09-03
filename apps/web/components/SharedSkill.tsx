@@ -27,7 +27,7 @@ export function SharedSkill({ slug }: { slug: string }) {
 
   const compiled = useMemo(() => (skill ? compile(skill.file.doc) : null), [skill]);
 
-  if (error) return <div className="p-8 text-sm text-red-700">{error}</div>;
+  if (error) return <div className="p-8 text-sm text-[var(--err)]">{error}</div>;
   if (skill === undefined) return <div className="p-8 text-sm text-[var(--muted)]">Loading…</div>;
   if (skill === null || !compiled)
     return (
@@ -80,7 +80,7 @@ export function SharedSkill({ slug }: { slug: string }) {
       </div>
       <h1 className="text-2xl font-bold">{skill.name}</h1>
       <p className="mb-6 text-sm text-[var(--muted)]">{skill.description}</p>
-      <div className="prose-preview rounded-lg border border-[var(--line)] bg-white p-6 text-sm">
+      <div className="prose-preview rounded-lg border border-[var(--line)] bg-[var(--card)] p-6 text-sm">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
       </div>
     </div>
