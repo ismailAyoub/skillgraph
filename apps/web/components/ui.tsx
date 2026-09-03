@@ -16,12 +16,12 @@ export function Button({
   variant?: 'default' | 'primary' | 'ghost' | 'danger';
 }) {
   const base =
-    'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed';
+    'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed';
   const styles = {
-    default: 'border border-[var(--line)] bg-white hover:bg-neutral-50',
-    primary: 'bg-[var(--accent)] text-white hover:opacity-90',
-    ghost: 'hover:bg-neutral-100',
-    danger: 'border border-red-200 text-red-700 hover:bg-red-50',
+    default: 'border border-[var(--line-strong)] bg-[var(--card)] hover:bg-[var(--panel)]',
+    primary: 'bg-[var(--ink)] text-[var(--bg)] hover:opacity-90',
+    ghost: 'text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--ink)]',
+    danger: 'border border-[var(--err)] text-[var(--err)] hover:bg-[var(--err-soft)]',
   }[variant];
   return <button type="button" className={`${base} ${styles} ${className}`} {...props} />;
 }
@@ -39,10 +39,10 @@ export function Field({
     // biome-ignore lint/a11y/noLabelWithoutControl: the control is passed as children
     <label className="block space-y-1">
       <div className="flex items-baseline justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+        <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--faint)]">
           {label}
         </span>
-        {hint && <span className="text-[10px] text-[var(--muted)]">{hint}</span>}
+        {hint && <span className="text-[10.5px] text-[var(--faint)]">{hint}</span>}
       </div>
       {children}
     </label>
@@ -50,7 +50,7 @@ export function Field({
 }
 
 const inputCls =
-  'w-full rounded-md border border-[var(--line)] bg-white px-2 py-1.5 text-xs focus:border-[var(--accent)] focus:outline-none';
+  'w-full rounded-lg border border-[var(--line-strong)] bg-[var(--card)] px-2.5 py-1.5 text-xs placeholder:text-[var(--faint)] focus:border-[var(--ink)] focus:outline-none';
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={inputCls} {...props} />;
@@ -96,13 +96,13 @@ export function Tabs<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex gap-1 border-b border-[var(--line)] px-2">
+    <div className="flex gap-2 border-b border-[var(--line)] px-3">
       {tabs.map((t) => (
         <button
           key={t.id}
           type="button"
           onClick={() => onChange(t.id)}
-          className={`-mb-px border-b-2 px-2 py-1.5 text-xs ${value === t.id ? 'border-[var(--accent)] font-semibold text-[var(--accent)]' : 'border-transparent text-[var(--muted)] hover:text-[var(--ink)]'}`}
+          className={`-mb-px border-b-2 px-2 py-2 text-xs ${value === t.id ? 'border-[var(--ink)] font-medium text-[var(--ink)]' : 'border-transparent text-[var(--faint)] hover:text-[var(--ink)]'}`}
         >
           {t.label}
         </button>
@@ -119,10 +119,10 @@ export function Pill({
   tone?: 'muted' | 'ok' | 'warn' | 'err' | 'accent';
 }) {
   const cls = {
-    muted: 'bg-neutral-100 text-neutral-600',
-    ok: 'bg-green-50 text-green-700',
-    warn: 'bg-amber-50 text-amber-700',
-    err: 'bg-red-50 text-red-700',
+    muted: 'border border-[var(--line)] bg-[var(--panel)] text-[var(--muted)]',
+    ok: 'bg-[var(--accent-soft)] text-[var(--accent)]',
+    warn: 'bg-[var(--warn-soft)] text-[var(--warn)]',
+    err: 'bg-[var(--err-soft)] text-[var(--err)]',
     accent: 'bg-[var(--accent-soft)] text-[var(--accent)]',
   }[tone];
   return (
@@ -155,7 +155,7 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="w-full rounded-lg border border-[var(--line)] bg-white shadow-xl outline-none"
+        className="w-full rounded-xl border border-[var(--line-strong)] bg-[var(--card)] shadow-[0_24px_60px_-30px_rgba(60,45,20,0.45)] outline-none"
         style={{ maxWidth: width }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
@@ -163,11 +163,11 @@ export function Modal({
         }}
       >
         <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-2.5">
-          <h2 className="text-sm font-semibold">{title}</h2>
+          <h2 className="font-serif text-[17px] font-medium">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-1.5 text-[var(--muted)] hover:bg-neutral-100 hover:text-[var(--ink)]"
+            className="rounded px-1.5 text-[var(--muted)] hover:bg-[var(--panel)] hover:text-[var(--ink)]"
             aria-label="Close"
           >
             ×

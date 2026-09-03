@@ -104,7 +104,7 @@ export function CloudControls() {
         </>
       )}
       {(cloudMessage || shareError) && (
-        <span className="text-[11px] text-red-700">{cloudMessage ?? shareError}</span>
+        <span className="text-[11px] text-[var(--err)]">{cloudMessage ?? shareError}</span>
       )}
     </>
   );

@@ -54,7 +54,7 @@ export function DescribePanel({ disabled }: { disabled: boolean }) {
       <ErrorNote error={error} />
       {busy && <Busy label="Drafting…" />}
       {current && (
-        <div className="rounded border border-[var(--line)] bg-neutral-50 p-2 leading-snug">
+        <div className="rounded border border-[var(--line)] bg-[var(--panel)] p-2 leading-snug">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
             Current
           </div>
@@ -64,7 +64,7 @@ export function DescribePanel({ disabled }: { disabled: boolean }) {
       {describe?.candidates.map((c) => (
         <div
           key={c.description}
-          className="space-y-1.5 rounded border border-[var(--line)] bg-white p-2"
+          className="space-y-1.5 rounded border border-[var(--line)] bg-[var(--card)] p-2"
         >
           <div className="leading-snug">{c.description}</div>
           <div className="leading-snug text-[var(--muted)]">{c.rationale}</div>
@@ -91,7 +91,7 @@ export function DescribePanel({ disabled }: { disabled: boolean }) {
             {shown.map((q) => (
               <li
                 key={q.query}
-                className="flex items-start gap-1.5 rounded border border-[var(--line)] bg-white px-2 py-1"
+                className="flex items-start gap-1.5 rounded border border-[var(--line)] bg-[var(--card)] px-2 py-1"
               >
                 <span className="min-w-0 flex-1 leading-snug">{q.query}</span>
                 <Pill tone={q.should_trigger ? 'ok' : 'muted'}>

@@ -212,7 +212,7 @@ function CanvasInner() {
       proOptions={{ hideAttribution: true }}
       selectNodesOnDrag={false}
     >
-      <Background gap={20} size={1} color="#dcdcd8" />
+      <Background gap={22} size={1} color="#d9d1c2" />
       <Controls position="bottom-left" />
     </ReactFlow>
   );

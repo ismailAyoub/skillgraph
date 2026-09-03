@@ -65,7 +65,7 @@ function Choice({
 }) {
   return (
     <div
-      className={`rounded-lg border p-3 ${selected ? 'border-[var(--accent)] bg-[var(--accent-soft)]/40' : 'border-[var(--line)] bg-white'}`}
+      className={`rounded-lg border p-3 ${selected ? 'border-[var(--accent)] bg-[var(--accent-soft)]/40' : 'border-[var(--line)] bg-[var(--card)]'}`}
       data-testid={testId}
     >
       <label className="flex cursor-pointer items-center gap-2">
@@ -151,7 +151,7 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
               repo
             </a>
             ):
-            <pre className="mt-1 overflow-x-auto rounded border border-[var(--line)] bg-neutral-50 px-2 py-1.5 font-mono text-[10.5px] leading-relaxed">
+            <pre className="mt-1 overflow-x-auto rounded border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 font-mono text-[10.5px] leading-relaxed">
               {BRIDGE_START_COMMANDS.join('\n')}
             </pre>
           </li>

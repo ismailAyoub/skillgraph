@@ -39,7 +39,7 @@ export function DriftModal({
       }
     >
       <p>These files changed on disk since you opened the skill:</p>
-      <ul className="max-h-40 overflow-auto rounded border border-[var(--line)] bg-neutral-50 p-2 font-mono text-[11px]">
+      <ul className="max-h-40 overflow-auto rounded border border-[var(--line)] bg-[var(--panel)] p-2 font-mono text-[11px]">
         {drifted.map((f) => (
           <li key={f}>{f}</li>
         ))}

@@ -552,7 +552,7 @@ function EdgesSection({ node }: { node: SkillNode }) {
   );
   return (
     <div className="space-y-1">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+      <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-[var(--faint)]">
         Connections
       </div>
       {outgoing.map((e) => row(e, byId.get(e.target), 'out'))}
@@ -574,11 +574,11 @@ export function Inspector() {
   const specs = FIELDS[node.kind as NodeKind] ?? [];
   const issues = (lintResult?.diagnostics ?? []).filter((d) => d.nodeId === node.id);
   return (
-    <div className="space-y-3 p-3">
+    <div className="space-y-3.5 p-4">
       <div className="flex items-center gap-2">
-        <span className="inline-block h-3 w-3 rounded-sm" style={{ background: meta?.color }} />
-        <div className="text-sm font-semibold">{meta?.label ?? node.kind}</div>
-        <span className="ml-auto font-mono text-[10px] text-[var(--muted)]">{node.id}</span>
+        <span className="inline-block h-2 w-2 rounded-full" style={{ background: meta?.color }} />
+        <div className="font-serif text-[17px] font-medium">{meta?.label ?? node.kind}</div>
+        <span className="ml-auto font-mono text-[10.5px] text-[var(--faint)]">{node.id}</span>
         {node.kind !== 'entry' && (
           <Button variant="danger" onClick={() => removeNode(node.id)} title="Delete node">
             <Trash2 size={12} />
@@ -586,7 +586,7 @@ export function Inspector() {
         )}
       </div>
       {issues.length > 0 && (
-        <div className="space-y-0.5 rounded-md border border-[var(--line)] bg-neutral-50 p-2 text-[11px]">
+        <div className="space-y-0.5 rounded-md border border-[var(--line)] bg-[var(--panel)] p-2 text-[11px]">
           {issues.map((d) => (
             <div key={`${d.rule}-${d.message}`} className={`sg-diag-${d.severity}`}>
               <span className="font-mono">{d.rule}</span> {d.message}

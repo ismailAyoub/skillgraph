@@ -20,7 +20,7 @@ import { Inspector } from '@/components/inspector/Inspector';
 import { Palette } from '@/components/Palette';
 import { Preview } from '@/components/preview/Preview';
 import { SettingsButton } from '@/components/SettingsDialog';
-import { Button, Pill, Select } from '@/components/ui';
+import { Button, Select } from '@/components/ui';
 import { useAiPanel } from '@/lib/aiStore';
 import { takeKickoff } from '@/lib/kickoff';
 import { useEditor } from '@/lib/store';
@@ -111,7 +111,7 @@ export function Editor({ id }: { id: string }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [undo, redo]);
 
-  if (error) return <div className="p-6 text-sm text-red-700">{error}</div>;
+  if (error) return <div className="p-6 text-sm text-[var(--err)]">{error}</div>;
   if (!file || !compiled) return <div className="p-6 text-sm text-[var(--muted)]">Loading…</div>;
   const entry = file.doc.nodes.find((n) => n.kind === 'entry') as { name: string };
   const { lines, tokens, budget } = compiled.report;
@@ -119,21 +119,45 @@ export function Editor({ id }: { id: string }) {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center gap-2 border-b border-[var(--line)] bg-white px-3 py-1.5">
+      <header className="flex h-14 items-center gap-3 border-b border-[var(--line)] bg-[var(--panel)] px-4">
         <Link
           href="/app"
           className="flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--ink)]"
         >
           <ArrowLeft size={14} /> Skills
         </Link>
-        <span className="font-semibold">{entry.name}</span>
-        <Pill tone={lineTone}>{lines} lines</Pill>
-        <Pill tone={tokens > budget.tokens ? 'warn' : 'muted'}>~{tokens} tokens</Pill>
-        {lintResult && lintResult.errors > 0 && <Pill tone="err">{lintResult.errors} errors</Pill>}
-        {lintResult && lintResult.warnings > 0 && (
-          <Pill tone="warn">{lintResult.warnings} warnings</Pill>
-        )}
-        <span className="ml-auto text-[11px] text-[var(--muted)]">
+        <span className="h-5 w-px bg-[var(--line)]" />
+        <span className="font-serif text-[19px] font-medium tracking-[-0.01em]">{entry.name}</span>
+        <span className="font-mono text-[11.5px] text-[var(--faint)]">
+          <span
+            className={
+              lineTone === 'err'
+                ? 'text-[var(--err)]'
+                : lineTone === 'warn'
+                  ? 'text-[var(--warn)]'
+                  : ''
+            }
+          >
+            {lines} lines
+          </span>
+          {' · '}
+          <span className={tokens > budget.tokens ? 'text-[var(--warn)]' : ''}>
+            ~{tokens} tokens
+          </span>
+          {lintResult && lintResult.errors > 0 && (
+            <span className="text-[var(--err)]">
+              {' · '}
+              {lintResult.errors} {lintResult.errors === 1 ? 'error' : 'errors'}
+            </span>
+          )}
+          {lintResult && lintResult.warnings > 0 && (
+            <span className="text-[var(--warn)]">
+              {' · '}
+              {lintResult.warnings} {lintResult.warnings === 1 ? 'warning' : 'warnings'}
+            </span>
+          )}
+        </span>
+        <span className="ml-auto text-[11.5px] text-[var(--faint)]">
           {saving ? 'Saving…' : 'Saved'}
         </span>
         {origin && (
@@ -147,7 +171,7 @@ export function Editor({ id }: { id: string }) {
         )}
         {bridgeMessage && (
           <span
-            className={`text-[11px] ${bridgeStatus === 'error' || bridgeStatus === 'drift' ? 'text-red-700' : 'text-[var(--muted)]'}`}
+            className={`text-[11px] ${bridgeStatus === 'error' || bridgeStatus === 'drift' ? 'text-[var(--err)]' : 'text-[var(--muted)]'}`}
           >
             {bridgeMessage}
           </span>
@@ -189,7 +213,11 @@ export function Editor({ id }: { id: string }) {
           }}
           aria-pressed={previewTab === 'ai'}
           aria-label="Open AI chat"
-          className={previewTab === 'ai' ? 'border-[var(--accent)] text-[var(--accent)]' : ''}
+          className={
+            previewTab === 'ai'
+              ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+              : ''
+          }
           title="Chat with Claude about this skill (opens the AI panel)"
         >
           <MessageSquareText size={14} /> Chat
@@ -204,14 +232,14 @@ export function Editor({ id }: { id: string }) {
         </Button>
         <ExportMenu file={file} />
       </header>
-      <div className="grid min-h-0 flex-1 grid-cols-[210px_1fr_440px]">
-        <aside className="min-h-0 border-r border-[var(--line)] bg-white">
+      <div className="grid min-h-0 flex-1 grid-cols-[216px_1fr_440px]">
+        <aside className="min-h-0 border-r border-[var(--line)] bg-[var(--panel)]">
           <Palette />
         </aside>
         <main className="min-h-0">
           <Canvas />
         </main>
-        <aside className="grid min-h-0 grid-rows-2 border-l border-[var(--line)] bg-white">
+        <aside className="grid min-h-0 grid-rows-2 border-l border-[var(--line)] bg-[var(--panel)]">
           <div className="min-h-0 overflow-y-auto border-b border-[var(--line)]">
             <Inspector />
           </div>

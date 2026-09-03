@@ -278,8 +278,8 @@ export function LoginForm() {
             role={notice.tone === 'err' ? 'alert' : 'status'}
             className={`rounded-md border px-3 py-2 text-[12.5px] ${
               notice.tone === 'err'
-                ? 'border-red-200 bg-red-50 text-red-700'
-                : 'border-green-200 bg-green-50 text-green-700'
+                ? 'border-[var(--err)] bg-[var(--err-soft)] text-[var(--err)]'
+                : 'border-green-200 bg-[var(--accent-soft)] text-green-700'
             }`}
           >
             {notice.text}

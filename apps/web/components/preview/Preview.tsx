@@ -66,7 +66,7 @@ export function Preview() {
                   key={p}
                   type="button"
                   onClick={() => setActiveFile(p)}
-                  className={`block w-full truncate rounded px-1.5 py-1 text-left font-mono ${activeFile === p ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'hover:bg-neutral-100'}`}
+                  className={`block w-full truncate rounded px-1.5 py-1 text-left font-mono ${activeFile === p ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'hover:bg-[var(--panel)]'}`}
                 >
                   {p}
                 </button>
@@ -87,7 +87,7 @@ export function Preview() {
                 key={`${d.rule}-${d.nodeId}-${d.message}`}
                 type="button"
                 onClick={() => d.nodeId && select(d.nodeId)}
-                className="block w-full rounded border border-[var(--line)] bg-white px-2 py-1 text-left hover:border-[var(--accent)]"
+                className="block w-full rounded border border-[var(--line)] bg-[var(--card)] px-2 py-1 text-left hover:border-[var(--accent)]"
               >
                 <span className={`font-semibold sg-diag-${d.severity}`}>{d.severity}</span>{' '}
                 <span className="font-mono text-[var(--muted)]">{d.rule}</span>

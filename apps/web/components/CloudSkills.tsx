@@ -70,7 +70,7 @@ export function CloudSkills() {
   };
 
   return (
-    <section className="mb-8 rounded-lg border border-[var(--line)] bg-white p-4">
+    <section className="mb-8 rounded-lg border border-[var(--line)] bg-[var(--card)] p-4">
       <div className="mb-2 flex items-center gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           <Cloud size={16} /> Cloud skills
@@ -82,7 +82,7 @@ export function CloudSkills() {
           <RefreshCw size={13} />
         </Button>
       </div>
-      {error && <p className="mb-2 text-[11px] text-red-700">{error}</p>}
+      {error && <p className="mb-2 text-[11px] text-[var(--err)]">{error}</p>}
       {rows.length === 0 && (
         <p className="text-xs text-[var(--muted)]">
           Nothing in the cloud yet. Open a skill and press "Save to cloud" in the editor header.

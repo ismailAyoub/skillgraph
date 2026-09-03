@@ -61,14 +61,14 @@ export function SiteHeader() {
             (signedIn ? (
               <Link
                 href="/app"
-                className="rounded-md px-2.5 py-1.5 text-[13px] font-medium text-[var(--ink)] transition hover:bg-neutral-200/60"
+                className="rounded-md px-2.5 py-1.5 text-[13px] font-medium text-[var(--ink)] transition hover:bg-[var(--panel)]"
               >
                 Dashboard
               </Link>
             ) : (
               <Link
                 href="/login"
-                className="rounded-md px-2.5 py-1.5 text-[13px] font-medium text-[var(--ink)] transition hover:bg-neutral-200/60"
+                className="rounded-md px-2.5 py-1.5 text-[13px] font-medium text-[var(--ink)] transition hover:bg-[var(--panel)]"
               >
                 Sign in
               </Link>

@@ -55,7 +55,7 @@ export function CopilotPanel({ disabled }: { disabled: boolean }) {
           Acting on <span className="font-mono text-[var(--ink)]">{node.id}</span> ({node.kind})
         </div>
       ) : (
-        <div className="rounded border border-[var(--line)] bg-neutral-50 px-2 py-1.5 text-[var(--muted)]">
+        <div className="rounded border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 text-[var(--muted)]">
           Select a node on the canvas to use the copilot.
         </div>
       )}
