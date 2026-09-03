@@ -740,7 +740,9 @@ function renderContainerBody(
     }
     if (LIST_ITEM_KINDS.has(n.kind)) {
       const s = n as StepNodeT;
-      if (stepStyle === 'prose' && n.kind === 'step') {
+      // A step may choose prose on its own, so one phase can hold both paragraphs and a list.
+      const asProse = s.prose ?? stepStyle === 'prose';
+      if (asProse && n.kind === 'step') {
         flush();
         blocks.push(...renderStepBlocks(ctx, s, depth));
         continue;

@@ -152,7 +152,7 @@ A skill is a graph. Every node has \`id\`, \`kind\`, \`parentId\` (null at the r
 |---|---|---|
 | entry | singleton; frontmatter + H1 + synthesized sections | name, description, summary, triggers[], negativeTriggers[], usage, overview ('auto'/'none'), referenceIndex, budget {lines, tokens} |
 | phase | heading-level section containing steps (container) | title (required), summary, intro, stepStyle ('numbered'/'bulleted'/'prose') |
-| step | one numbered/bulleted instruction | title (bold lead), instruction (markdown), why, detail[], tools[] |
+| step | one numbered/bulleted instruction | title (bold lead), instruction (markdown), why, detail[], tools[], prose (render as paragraphs, not a list item) |
 | decision | branch point; needs >= 2 \`branch\` edges | question, intro |
 | loop | repeat its children until a condition (container) | until, maxIterations, intro, why |
 | ask_user | a question to the user, blocking by default | question, options[], blocking, why |

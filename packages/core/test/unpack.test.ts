@@ -249,7 +249,7 @@ describe('unpackNode: raw_markdown', () => {
 });
 
 describe('unpackNode: raw_markdown prose', () => {
-  it('makes one step per paragraph and switches a list-free phase to prose so SKILL.md keeps its text', () => {
+  it('makes one prose step per paragraph so SKILL.md keeps its text', () => {
     const body =
       'If the brief does not pin down the subject, pin it yourself before designing.\n\n**Open with a thesis.** The hero states what the page is for.\n\nFor calibration, avoid the three default looks.';
     const doc = skill([
@@ -271,7 +271,11 @@ describe('unpackNode: raw_markdown prose', () => {
       ['step', 'Open with a thesis.', 'import'],
       ['step', '', 'import'],
     ]);
-    expect(next.nodes.find((n) => n.id === 'phase_design')).toMatchObject({ stepStyle: 'prose' });
+    expect(steps.every((n) => (n as { prose?: boolean }).prose === true)).toBe(true);
+    // The phase keeps its own style; prose lives on the steps that came from paragraphs.
+    expect(next.nodes.find((n) => n.id === 'phase_design')).toMatchObject({
+      stepStyle: 'numbered',
+    });
     expect(compile(next).skillMd).toBe(before);
   });
 
@@ -288,21 +292,38 @@ describe('unpackNode: raw_markdown prose', () => {
     expect(compile(next).skillMd).toBe(before);
   });
 
-  it('keeps the numbered style when the phase already has list steps', () => {
+  it('keeps prose paragraphs out of the numbered list when a phase holds both', () => {
+    // The shape that broke the compiled output before per-step prose existed: a lead paragraph,
+    // a numbered list, then two trailing paragraphs, all inside one phase.
+    const body = [
+      '**Goal:** open the idea up.',
+      '',
+      '1. **Restate it** as a question.',
+      '2. **Ask** three sharpening questions.',
+      '',
+      '**If inside a codebase:** ground the variations in what exists.',
+      '',
+      'Read `frameworks.md` for more lenses.',
+    ].join('\n');
     const doc = skill([
-      {
-        id: 'raw_1',
-        kind: 'raw_markdown',
-        parentId: 'phase_review',
-        order: 2,
-        body: 'First paragraph.\n\nSecond paragraph.',
-      },
+      { id: 'phase_diverge', kind: 'phase', order: 2, title: 'Diverge' },
+      { id: 'raw_1', kind: 'raw_markdown', parentId: 'phase_diverge', order: 1, body },
     ]);
+    const before = compile(doc).skillMd;
     const next = apply(doc, 'raw_1');
-    expect(next.nodes.find((n) => n.id === 'phase_review')).toMatchObject({
+    const steps = children(next, 'phase_diverge');
+    expect(steps.map((n) => (n as { prose?: boolean }).prose ?? false)).toEqual([
+      true,
+      false,
+      false,
+      true,
+      true,
+    ]);
+    expect(next.nodes.find((n) => n.id === 'phase_diverge')).toMatchObject({
       stepStyle: 'numbered',
     });
-    expect(children(next, 'phase_review')).toHaveLength(3);
+    // The list stays a 1./2. list and the paragraphs stay paragraphs.
+    expect(compile(next).skillMd).toBe(before);
   });
 });
 
@@ -425,6 +446,120 @@ describe('unpackNode: reference', () => {
       ['Triage', null],
       ['Edge cases', 'phase_0001'],
     ]);
+  });
+});
+
+describe('unpackNode: edges the removal would have dropped', () => {
+  it('carries reads, runs and attaches over to the first new step', () => {
+    const doc = skill(
+      [
+        {
+          id: 'step_only',
+          kind: 'step',
+          parentId: 'phase_review',
+          order: 2,
+          instruction: PROCEDURE,
+        },
+        {
+          id: 'ref_x',
+          kind: 'reference',
+          order: 3,
+          path: 'references/x.md',
+          body: 'lookup table',
+          readWhen: 'when the input is odd',
+        },
+        {
+          id: 'script_y',
+          kind: 'script',
+          order: 4,
+          path: 'scripts/y.sh',
+          language: 'bash',
+          code: 'echo hi',
+          runWhen: 'always',
+        },
+        { id: 'guard_g', kind: 'guardrail', order: 5, text: "Don't skip.", why: 'It matters.' },
+      ],
+      [
+        { id: 'e_reads', kind: 'reads', source: 'step_only', target: 'ref_x', mentioned: true },
+        { id: 'e_runs', kind: 'runs', source: 'step_only', target: 'script_y' },
+        { id: 'e_att', kind: 'attaches', source: 'guard_g', target: 'step_only' },
+      ],
+    );
+    const next = apply(doc, 'step_only');
+    const first = children(next, 'phase_review')[1] as SkillNode;
+    expect(first.title).toBe('Read the diff');
+    expect(next.edges.map((e) => `${e.kind}:${e.source}>${e.target}`).sort()).toEqual([
+      `attaches:guard_g>${first.id}`,
+      `reads:${first.id}>ref_x`,
+      `runs:${first.id}>script_y`,
+    ]);
+    // The mention flag survives, so the compiler keeps its sentence rather than duplicating it.
+    expect(next.edges.find((e) => e.kind === 'reads')?.mentioned).toBe(true);
+    const md = compile(next).skillMd;
+    expect(md).toContain('scripts/y.sh');
+    expect(md).toContain("Don't skip.");
+    expect(lint(next).diagnostics.map((d) => d.rule)).not.toContain('graph/orphan-script');
+  });
+
+  it('carries an incoming decision branch and does not also chain a next edge into the run', () => {
+    const doc = skill(
+      [
+        { id: 'dec_1', kind: 'decision', parentId: 'phase_review', order: 2, question: 'Which?' },
+        { id: 'step_other', kind: 'step', parentId: 'phase_review', order: 3, instruction: 'B.' },
+        {
+          id: 'raw_1',
+          kind: 'raw_markdown',
+          parentId: 'phase_review',
+          order: 4,
+          body: PROCEDURE,
+        },
+      ],
+      [
+        { id: 'e_b1', kind: 'branch', source: 'dec_1', target: 'step_other', label: 'Case B' },
+        { id: 'e_b2', kind: 'branch', source: 'dec_1', target: 'raw_1', label: 'Case A' },
+      ],
+    );
+    const next = apply(doc, 'raw_1');
+    const carried = next.edges.filter((e) => e.target === 'step_0001');
+    expect(carried.map((e) => `${e.kind}:${e.label}`)).toEqual(['branch:Case A']);
+    expect(next.edges.filter((e) => e.kind === 'next' && e.target === 'step_0001')).toEqual([]);
+    expect(lint(next).diagnostics.map((d) => d.rule)).not.toContain('graph/decision-branches');
+  });
+
+  it('unpacks a reference that shares a container with the step reading it', () => {
+    const doc = parseDoc({
+      nodes: [
+        {
+          id: 'entry_root',
+          kind: 'entry',
+          order: 0,
+          name: 'demo',
+          description: 'Reviews pull requests. Use when the user asks for a PR review.',
+        },
+        { id: 'step_host', kind: 'step', order: 1, title: 'Do it', instruction: 'now.' },
+        {
+          id: 'ref_proc',
+          kind: 'reference',
+          order: 2,
+          path: 'references/p.md',
+          body: PROCEDURE,
+          provenance: 'ai',
+        },
+      ],
+      edges: [{ id: 'e_reads', kind: 'reads', source: 'step_host', target: 'ref_proc' }],
+    });
+    // The reference is a root sibling after its reader, so the shift must not move a removed node.
+    const next = apply(doc, 'ref_proc');
+    expect(children(next, null).map((n) => [n.kind, n.order])).toEqual([
+      ['entry', 0],
+      ['step', 1],
+      ['step', 2],
+      ['step', 3],
+      ['step', 4],
+    ]);
+    expect(next.nodes.some((n) => n.kind === 'reference')).toBe(false);
+    expect(next.edges).toEqual([]);
+    expect(Object.keys(compile(next).files)).toEqual(['SKILL.md']);
   });
 });
 
