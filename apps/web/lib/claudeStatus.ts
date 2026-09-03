@@ -98,9 +98,11 @@ export function subscriptionHint(step: SubscriptionStep): string {
   }
 }
 
-/** Short call to action for the header when AI is not usable yet. */
+/**
+ * Short call to action for the header when AI is not usable yet. Only a logged-out CLI gets a
+ * specific label: a relay plus an installed Claude Code means the user is on the subscription
+ * path. Before that, nothing says they prefer it to an API key, so the neutral "Connect AI".
+ */
 export function subscriptionCta(step: SubscriptionStep): string {
-  if (step === 'login') return 'Log in to Claude Code';
-  if (step === 'install') return 'Install Claude Code';
-  return 'Connect AI';
+  return step === 'login' ? 'Log in to Claude Code' : 'Connect AI';
 }
