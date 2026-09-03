@@ -573,7 +573,10 @@ function unpackHint(node: SkillNode, shape: MarkdownShape): string {
     case 'step':
       return `${shape.stepItems} sub-steps are hiding inside this instruction.`;
     default:
-      return `${shape.items} list item(s) are hiding inside this markdown.`;
+      if (shape.items > 0) return `${shape.items} list item(s) are hiding inside this markdown.`;
+      return shape.paragraphs === 1
+        ? 'This markdown is one paragraph; as a step it gets a title, a why and a place in the flow.'
+        : `${shape.paragraphs} paragraph(s) are hiding inside this markdown.`;
   }
 }
 

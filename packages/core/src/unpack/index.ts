@@ -33,6 +33,10 @@ import { newId } from '../util/ids';
  */
 
 export interface MarkdownShape {
+  /** Top-level blocks (paragraphs, lists, headings, code, ...). */
+  blocks: number;
+  /** Top-level paragraphs. */
+  paragraphs: number;
   /** Top-level list items across every list in the fragment. */
   items: number;
   /** Items that read as steps: every item of an ordered list, or of a bullet list whose items all open with a bold lead. Task lists do not count. */
@@ -61,6 +65,7 @@ function isStepList(lst: List): boolean {
 /** Count what a markdown fragment holds; the basis of every unpack decision. */
 export function measureMarkdown(text: string): MarkdownShape {
   const blocks = mdBlocks(text);
+  let paragraphs = 0;
   let items = 0;
   let stepItems = 0;
   let headings = 0;
@@ -70,6 +75,7 @@ export function measureMarkdown(text: string): MarkdownShape {
     const len = blocksToMarkdown([b]).length;
     total += len;
     if (b.type === 'heading') headings += 1;
+    else if (b.type === 'paragraph') paragraphs += 1;
     else if (b.type === 'list') {
       items += b.children.length;
       if (isStepList(b)) {
@@ -78,12 +84,19 @@ export function measureMarkdown(text: string): MarkdownShape {
       }
     }
   }
-  return { items, stepItems, headings, share: total > 0 ? stepChars / total : 0 };
+  return {
+    blocks: blocks.length,
+    paragraphs,
+    items,
+    stepItems,
+    headings,
+    share: total > 0 ? stepChars / total : 0,
+  };
 }
 
 /**
  * What `unpackNode` would find in this node, or null when there is nothing to unpack:
- * - raw_markdown: any list of two or more items, or a heading;
+ * - raw_markdown: any paragraph (each becomes a step), a list of two or more items, or a heading; a lone code block or table stays raw;
  * - reference (inline): a body that is mostly a procedure (three or more step-like items making up at least half of it);
  * - step: an instruction embedding three or more step-like items.
  */
@@ -91,7 +104,7 @@ export function unpackShape(node: SkillNode): MarkdownShape | null {
   switch (node.kind) {
     case 'raw_markdown': {
       const s = measureMarkdown((node as RawMarkdownNodeT).body ?? '');
-      return s.items >= 2 || s.headings >= 1 ? s : null;
+      return s.paragraphs >= 1 || s.items >= 2 || s.headings >= 1 ? s : null;
     }
     case 'reference': {
       const r = node as ReferenceNodeT;
@@ -416,6 +429,22 @@ function looseNeighbours(
   };
 }
 
+/**
+ * Prose paragraphs become steps; inside a phase that has no list steps yet, switch the phase to
+ * `stepStyle: prose` so those steps compile back to paragraphs and the SKILL.md text is unchanged.
+ */
+function proseStyleOps(doc: SkillDoc, node: SkillNode, blocks: RootContent[]): PatchOpT[] {
+  const parent = node.parentId ? doc.nodes.find((n) => n.id === node.parentId) : undefined;
+  if (parent?.kind !== 'phase') return [];
+  if ((parent as PhaseNodeT).stepStyle === 'prose') return [];
+  const prose = blocks.length > 0 && blocks.every((b) => b.type !== 'list' && b.type !== 'heading');
+  if (!prose) return [];
+  const hasSteps = doc.nodes.some(
+    (n) => n.parentId === parent.id && n.id !== node.id && n.kind === 'step',
+  );
+  return hasSteps ? [] : [{ op: 'update', id: parent.id, data: { stepStyle: 'prose' } }];
+}
+
 /** Replace `node` in place: its slot and its flow edges go to the converted nodes. */
 function replaceInPlace(
   doc: SkillDoc,
@@ -437,6 +466,7 @@ function replaceInPlace(
   const chain = containerHasFlow(doc, parentId);
   const ops: PatchOpT[] = [
     { op: 'remove', id: node.id },
+    ...proseStyleOps(doc, node, blocks),
     ...shiftOps(doc, parentId, node.order, run.length - 1, node.id),
     ...nodes.map((n): PatchOpT => ({ op: 'add', node: n })),
     ...edges.map((e): PatchOpT => ({ op: 'addEdge', edge: e })),

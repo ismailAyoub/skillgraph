@@ -430,7 +430,7 @@ function lintStyle(ctx: Ctx, entry: EntryNodeT, compiled: CompileResult, push: P
 
 /**
  * A procedure hiding inside one node's markdown (see `unpackNode`): every raw_markdown that
- * holds a list, a non-imported step that embeds sub-steps, an AI-written reference that is
+ * holds prose or a list, a non-imported step that embeds sub-steps, an AI-written reference that is
  * really the workflow. Imported references are left alone: files on disk are progressive
  * disclosure, not a mistake.
  */
@@ -444,7 +444,9 @@ function hiddenProcedure(n: SkillNode, ctx: Ctx): string | null {
   if (!shape) return null;
   switch (n.kind) {
     case 'raw_markdown':
-      return `Markdown holds ${shape.items} list item(s); unpack it so each shows as a node on the canvas`;
+      if (shape.items === 0 && shape.paragraphs === 1 && shape.headings === 0)
+        return 'Markdown holds one paragraph; unpack it into a step so it can be edited like the rest';
+      return `Markdown holds ${shape.items > 0 ? `${shape.items} list item(s)` : `${shape.paragraphs} paragraph(s)`}; unpack it so each shows as a node on the canvas`;
     case 'reference':
       return `${ctx.filePaths.get(n.id) ?? (n as ReferenceNodeT).path} holds a ${shape.stepItems}-step procedure; unpack it into steps so the workflow shows on the canvas`;
     default:

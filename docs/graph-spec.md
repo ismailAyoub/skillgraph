@@ -629,7 +629,7 @@ Drift detection: `compile` compares each file listed in `compiled.files` with it
 | `graph/orphan-reference` | warning | a reference that is not mentioned, not inlined, not indexed (`referenceIndex` is `none` and no catalog category) and not a URL |
 | `graph/orphan-script` | warning | a script no `runs` edge targets |
 | `graph/loop-needs-until` | warning | empty `until` |
-| `graph/procedure-in-markdown` | warning | a procedure hiding inside one node's markdown, as `unpackShape` detects it (section 20): any `raw_markdown` holding a list or heading, a non-imported `step` embedding three or more sub-steps, an AI-written `reference` whose body is mostly a procedure. Imported references are not flagged: files on disk are progressive disclosure |
+| `graph/procedure-in-markdown` | warning | a procedure hiding inside one node's markdown, as `unpackShape` detects it (section 20): any `raw_markdown` holding prose, a list or a heading, a non-imported `step` embedding three or more sub-steps, an AI-written `reference` whose body is mostly a procedure. Imported references are not flagged: files on disk are progressive disclosure |
 | `graph/reference-needs-read-when` | info | non-inlined, non-imported reference without `readWhen` |
 | `graph/script-needs-run-when` | info | non-imported script without `runWhen` |
 | `profile/inject-requires-claude-code` | error | `inject` node under universal (compiler; node omitted) |
@@ -654,13 +654,13 @@ Roadmap (in the plan, not implemented): `body/file-ref-depth` (reference-to-refe
 
 The canvas is the point of the tool, so a procedure must not hide inside one node's markdown: a `raw_markdown` body, a `references/*.md` that is really the workflow, or a step whose instruction embeds a numbered list. `packages/core/src/unpack` turns such a node into the nodes it should have been, deterministically (no model): the decompiler's recognizers, in a permissive mode where every list becomes nodes.
 
-`measureMarkdown(text)` returns `{ items, stepItems, headings, share }`: top-level list items, items that read as steps (every item of an ordered list, or of a bullet list whose items all open with a bold lead; task lists do not count), headings, and the share of the text taken by step-like lists.
+`measureMarkdown(text)` returns `{ blocks, paragraphs, items, stepItems, headings, share }`: top-level blocks and paragraphs, list items, items that read as steps (every item of an ordered list, or of a bullet list whose items all open with a bold lead; task lists do not count), headings, and the share of the text taken by step-like lists.
 
 `unpackShape(node)` returns that shape when the node is worth unpacking, else `null`:
 
 | Kind | Unpackable when |
 |---|---|
-| `raw_markdown` | two or more list items, or a heading |
+| `raw_markdown` | any paragraph (each becomes a step; inside a phase without list steps the phase switches to `stepStyle: prose` so the text compiles back unchanged), two or more list items, or a heading. A lone code block or table stays raw |
 | `reference` | `source: inline` and a body with three or more step-like items making up at least half of it |
 | `step` | an instruction embedding three or more step-like items |
 

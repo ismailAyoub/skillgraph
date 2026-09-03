@@ -59,7 +59,14 @@ describe('measureMarkdown / unpackShape', () => {
     const s = measureMarkdown(`Intro.\n\n${PROCEDURE}\n\n## Notes\n\n- a\n- b`);
     expect(s).toMatchObject({ items: 5, stepItems: 3, headings: 1 });
     expect(s.share).toBeGreaterThan(0.5);
-    expect(measureMarkdown('')).toEqual({ items: 0, stepItems: 0, headings: 0, share: 0 });
+    expect(measureMarkdown('')).toEqual({
+      blocks: 0,
+      paragraphs: 0,
+      items: 0,
+      stepItems: 0,
+      headings: 0,
+      share: 0,
+    });
   });
 
   it('accepts raw markdown with a list, a procedural reference and a step with sub-steps', () => {
@@ -83,7 +90,7 @@ describe('measureMarkdown / unpackShape', () => {
 
   it('leaves prose references, short lists, url references and other kinds alone', () => {
     const doc = skill([
-      { id: 'raw_1', kind: 'raw_markdown', order: 1, body: 'Just a paragraph.\n\n- one item' },
+      { id: 'raw_1', kind: 'raw_markdown', order: 1, body: '```bash\necho only code\n```' },
       {
         id: 'ref_prose',
         kind: 'reference',
@@ -238,6 +245,64 @@ describe('unpackNode: raw_markdown', () => {
     // The fence had no step to ride along with in its section, so it stays raw (nothing is lost).
     expect(verify[1]).toMatchObject({ body: '```bash\npnpm test\n```' });
     expect(compile(next).skillMd).toContain('pnpm test');
+  });
+});
+
+describe('unpackNode: raw_markdown prose', () => {
+  it('makes one step per paragraph and switches a list-free phase to prose so SKILL.md keeps its text', () => {
+    const body =
+      'If the brief does not pin down the subject, pin it yourself before designing.\n\n**Open with a thesis.** The hero states what the page is for.\n\nFor calibration, avoid the three default looks.';
+    const doc = skill([
+      { id: 'phase_design', kind: 'phase', order: 2, title: 'Design' },
+      {
+        id: 'raw_1',
+        kind: 'raw_markdown',
+        parentId: 'phase_design',
+        order: 1,
+        body,
+        provenance: 'import',
+      },
+    ]);
+    const before = compile(doc).skillMd;
+    const next = apply(doc, 'raw_1');
+    const steps = children(next, 'phase_design');
+    expect(steps.map((n) => [n.kind, n.title ?? '', n.provenance])).toEqual([
+      ['step', '', 'import'],
+      ['step', 'Open with a thesis.', 'import'],
+      ['step', '', 'import'],
+    ]);
+    expect(next.nodes.find((n) => n.id === 'phase_design')).toMatchObject({ stepStyle: 'prose' });
+    expect(compile(next).skillMd).toBe(before);
+  });
+
+  it('turns a lone paragraph into a prose step', () => {
+    const doc = skill([
+      { id: 'phase_p', kind: 'phase', order: 2, title: 'Prose' },
+      { id: 'raw_1', kind: 'raw_markdown', parentId: 'phase_p', order: 1, body: 'One paragraph.' },
+    ]);
+    const before = compile(doc).skillMd;
+    const next = apply(doc, 'raw_1');
+    expect(
+      children(next, 'phase_p').map((n) => [n.kind, (n as { instruction: string }).instruction]),
+    ).toEqual([['step', 'One paragraph.']]);
+    expect(compile(next).skillMd).toBe(before);
+  });
+
+  it('keeps the numbered style when the phase already has list steps', () => {
+    const doc = skill([
+      {
+        id: 'raw_1',
+        kind: 'raw_markdown',
+        parentId: 'phase_review',
+        order: 2,
+        body: 'First paragraph.\n\nSecond paragraph.',
+      },
+    ]);
+    const next = apply(doc, 'raw_1');
+    expect(next.nodes.find((n) => n.id === 'phase_review')).toMatchObject({
+      stepStyle: 'numbered',
+    });
+    expect(children(next, 'phase_review')).toHaveLength(3);
   });
 });
 
