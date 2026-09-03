@@ -23,13 +23,20 @@ export function ImportPanel({ disabled }: { disabled: boolean }) {
   /** Deterministic: lists and headings inside raw markdown become nodes, no model involved. */
   const unpackAll = () => {
     if (!file || !doc || unpackable.length === 0) return;
-    const patch = unpackNodes(
-      doc,
-      unpackable.map((n) => n.id),
+    // No network, but route through `run` so a rejected patch shows inline like any other error.
+    void run(
+      async () => {
+        const patch = unpackNodes(
+          doc,
+          unpackable.map((n) => n.id),
+        );
+        return { patch, boxes: placeUnpacked(file, patch) };
+      },
+      ({ patch, boxes }) => {
+        applyPatch(patch);
+        useEditor.getState().setLayout(boxes);
+      },
     );
-    const boxes = placeUnpacked(file, patch);
-    applyPatch(patch);
-    useEditor.getState().setLayout(boxes);
   };
 
   const build = () => {

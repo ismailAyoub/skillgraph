@@ -143,6 +143,12 @@ export const StepNode = NodeBase.extend({
   detail: z.array(z.string()).optional(),
   tools: z.array(z.string()).optional(),
   mentionTools: z.boolean().optional(),
+  /**
+   * Render as paragraphs instead of a list item, whatever the phase's `stepStyle`. Set by
+   * `unpackNode` on steps that came from prose, so a phase can mix paragraphs and a numbered
+   * list and still compile back to its original text. `false` opts out of a prose phase.
+   */
+  prose: z.boolean().optional(),
   /** List fidelity (imports): loose item, loose list, marker style and start number of the run this step opens. */
   spread: z.boolean().optional(),
   listSpread: z.boolean().optional(),

@@ -588,6 +588,7 @@ export function Inspector() {
   const setLayout = useEditor((s) => s.setLayout);
   const select = useEditor((s) => s.select);
   const lintResult = useEditor((s) => s.lintResult);
+  const [unpackError, setUnpackError] = useState<string | null>(null);
   const node =
     file?.doc.nodes.find((n) => n.id === (selectedId ?? 'entry_root')) ??
     file?.doc.nodes.find((n) => n.kind === 'entry');
@@ -597,12 +598,18 @@ export function Inspector() {
   const issues = (lintResult?.diagnostics ?? []).filter((d) => d.nodeId === node.id);
   const shape = unpackShape(node);
   const unpack = () => {
-    const patch = unpackNode(file.doc, node.id);
-    const boxes = placeUnpacked(file, patch);
-    dispatch(patch);
-    setLayout(boxes);
-    const first = patch.ops.find((op) => op.op === 'add');
-    select(first && first.op === 'add' ? first.node.id : null);
+    try {
+      const patch = unpackNode(file.doc, node.id);
+      const boxes = placeUnpacked(file, patch);
+      dispatch(patch);
+      setLayout(boxes);
+      const first = patch.ops.find((op) => op.op === 'add');
+      select(first && first.op === 'add' ? first.node.id : null);
+      setUnpackError(null);
+    } catch (e) {
+      // A rejected patch leaves the graph untouched; say so here rather than blanking the editor.
+      setUnpackError((e as Error).message);
+    }
   };
   return (
     <div className="space-y-3.5 p-4">
@@ -638,6 +645,11 @@ export function Inspector() {
           >
             <Ungroup size={12} /> Unpack into nodes
           </Button>
+        </div>
+      )}
+      {unpackError && (
+        <div className="rounded-md border border-[var(--err)] px-2 py-1.5 text-[11px] leading-snug text-[var(--err)]">
+          Could not unpack this node: {unpackError}
         </div>
       )}
       {specs.map((spec) => (

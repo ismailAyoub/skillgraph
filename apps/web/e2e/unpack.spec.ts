@@ -5,6 +5,7 @@ type EditorHook = {
     select: (id: string) => void;
     update: (id: string, data: Record<string, unknown>) => void;
     addNode: (kind: string, opts?: { parentId?: string | null; after?: string }) => string;
+    setLayout: (boxes: Record<string, { x: number; y: number }>) => void;
   };
 };
 
@@ -59,4 +60,61 @@ test('a markdown blob of steps is flagged and unpacks into step nodes from the i
   // Undo brings the blob back.
   await page.getByTitle('Undo (⌘Z)').click();
   await expect(page.locator('.react-flow__node')).toHaveCount(before);
+});
+
+test('unpacking several blobs at once anchors each run to its own blob', async ({ page }) => {
+  await page.goto('/app');
+  await page.getByLabel(/name/i).first().fill('unpack-many');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page).toHaveURL(/\/edit\//, { timeout: 60_000 });
+  await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
+
+  // Two blobs in two different phases, each pinned to a position of its own.
+  await page.evaluate(() => {
+    const store = (window as unknown as { __skillgraph: EditorHook }).__skillgraph.getState();
+    const spots: [string, string, number][] = [
+      ['phase_understand', 'Alpha', 300],
+      ['phase_do', 'Bravo', 520],
+    ];
+    for (const [parentId, lead, y] of spots) {
+      const id = store.addNode('raw_markdown', { parentId });
+      store.update(id, { body: `1. **${lead} one** do it.\n2. **${lead} two** then this.` });
+      store.setLayout({ [id]: { x: 16, y } });
+    }
+  });
+  const before = await page.locator('.react-flow__node').count();
+
+  await page.getByRole('button', { name: 'Open AI chat' }).click();
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await expect(page.getByTestId('unpack-raw')).toContainText('Unpack 2 into nodes');
+  await page.getByTestId('unpack-raw').click();
+
+  // Four steps replace two blobs, and nothing is left hiding in markdown.
+  await expect(page.locator('.react-flow__node')).toHaveCount(before + 2);
+  await expect(page.getByTestId('unpack-raw')).toHaveCount(0);
+
+  // Each run starts where its own blob sat, rather than all of them at the first blob's spot.
+  const placed = await page.evaluate(() => {
+    const store = (
+      window as unknown as {
+        __skillgraph: {
+          getState: () => {
+            file: {
+              doc: { nodes: { id: string; title?: string }[] };
+              layout: { nodes: Record<string, { x: number; y: number }> };
+            };
+          };
+        };
+      }
+    ).__skillgraph.getState();
+    const { doc, layout } = store.file;
+    const spot = (title: string) => {
+      const n = doc.nodes.find((x) => x.title === title);
+      const b = n ? layout.nodes[n.id] : undefined;
+      return b ? { x: b.x, y: b.y } : null;
+    };
+    return { alpha: spot('Alpha one'), bravo: spot('Bravo one') };
+  });
+  expect(placed.alpha).toEqual({ x: 16, y: 300 });
+  expect(placed.bravo).toEqual({ x: 16, y: 520 });
 });

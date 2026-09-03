@@ -135,6 +135,7 @@ Compiles to a heading, the intro paragraphs, then the children in sequence order
 | `detail` | string[] | | nested bullets |
 | `tools` | string[] | | hints; emitted only with `mentionTools` |
 | `mentionTools` | boolean | | appends `Use <tools joined by ", ">.` |
+| `prose` | boolean | | render as paragraphs instead of a list item, whatever the phase's `stepStyle`; `false` opts out of a prose phase. Set by `unpackNode` on steps that came from paragraphs, so one phase can hold prose and a numbered list and still compile back to its original text |
 | `spread`, `listSpread`, `listStyle`, `listStart` | fidelity | | loose item, loose list, `numbered`/`bulleted`, start number of the list this step opens |
 
 Rendering: `title` becomes a bold lead prepended to the first paragraph (a space is inserted unless the instruction starts with `.,:;!?)]`), then `why`, then the tools sentence, then one sentence per un-mentioned `reads`/`runs` edge, then `detail` bullets, then a `bash` fence per run script that has `usage`, then attached guardrails and examples.
@@ -365,7 +366,7 @@ Root `SKILL.md`, in order:
 
 Heading depth: root phases are H2 (or `headingDepth`), nested phases add one level; `body/heading-depth` warns at H5 and deeper.
 
-List runs: consecutive list-item kinds form one list. The style is the step's `listStyle`, else the current run's style, else the phase `stepStyle` (`bulleted` gives `-`, otherwise `1.`). A step carrying `listStyle`, `listStart` or `listSpread` always starts a new list (import fidelity). Under `stepStyle: prose` steps render as paragraphs while other list-item kinds still form lists. Decisions and block kinds close the current run.
+List runs: consecutive list-item kinds form one list. The style is the step's `listStyle`, else the current run's style, else the phase `stepStyle` (`bulleted` gives `-`, otherwise `1.`). A step carrying `listStyle`, `listStart` or `listSpread` always starts a new list (import fidelity). A step renders as paragraphs when its own `prose` is true, else when the phase is `stepStyle: prose` and the step does not set `prose: false`; other list-item kinds still form lists. Decisions and block kinds close the current run.
 
 Serializer (frozen, `STRINGIFY_OPTIONS`): bullet `-`, ordered marker `.`, incrementing list markers, emphasis and strong with `*`, fenced code, `listItemIndent: one`, rule `-`, no setext headings, LF line endings, single trailing newline. YAML uses `lineWidth: 0`, indent 2.
 
@@ -660,11 +661,11 @@ The canvas is the point of the tool, so a procedure must not hide inside one nod
 
 | Kind | Unpackable when |
 |---|---|
-| `raw_markdown` | any paragraph (each becomes a step; inside a phase without list steps the phase switches to `stepStyle: prose` so the text compiles back unchanged), two or more list items, or a heading. A lone code block or table stays raw |
+| `raw_markdown` | any paragraph (each becomes a step with `prose: true`, so the text compiles back unchanged even when the same phase also holds a numbered list), two or more list items, or a heading. A lone code block or table stays raw |
 | `reference` | `source: inline` and a body with three or more step-like items making up at least half of it |
 | `step` | an instruction embedding three or more step-like items |
 
-`unpackNode(doc, nodeId, { id? })` returns a `GraphPatch` (never applied for you). Inside the fragment: a heading becomes a `phase` nested by depth (leading prose becomes its `intro`; steps from one list are chained with `next` edges inside such a phase); an ordered list, or any bullet list, becomes one `step` per item (bold lead to `title`, `listStyle: bulleted` on the first step of a bullet list); a task list becomes a `checklist` (`verification` under a verify-like heading, `red-flags` under a red-flag heading); bold-led bullets under a rules-like heading become `guardrail`s; a paragraph becomes a `step`; code, tables and quotes ride along with the step they follow, or stay in a small `raw_markdown` so nothing is lost. Provenance is inherited from the source node.
+`unpackNode(doc, nodeId, { id? })` returns a `GraphPatch` (never applied for you). Inside the fragment: a heading becomes a `phase` nested by depth (leading prose becomes its `intro`; steps from one list are chained with `next` edges inside such a phase); an ordered list, or any bullet list, becomes one `step` per item (bold lead to `title`, `listStyle: bulleted` on the first step of a bullet list); a task list becomes a `checklist` (`verification` under a verify-like heading, `red-flags` under a red-flag heading); bold-led bullets under a rules-like heading become `guardrail`s; a paragraph becomes a `step` with `prose: true`; code, tables and quotes ride along with the step they follow, or stay in a small `raw_markdown` so nothing is lost. Provenance is inherited from the source node.
 
 Placement depends on the kind:
 
@@ -674,6 +675,8 @@ Placement depends on the kind:
 | `step` | right after the step, as siblings; its outgoing `next` edge (or the container's use of edges) chains the host through the new steps | keeps its title and non-list text; removed when it held nothing but the list |
 | `reference` | right after the step that `reads` it; with no reader, a new root phase named after the file (an enclosing H1 is used as that phase) | removed, with its `reads` edges |
 
+Edges the removal would otherwise drop are carried to the first flow node of the run: the `reads` and `runs` edges naming the files the node used, the `attaches` edges of its guardrails and examples, and the incoming `branch` edge of a decision that reached it (label and `isDefault` preserved, and no `next` edge is then chained into the run as well). Incoming `reads`/`runs` are deliberately not carried, since those name the node as a file and the reference case dissolves that file on purpose.
+
 `unpackNodes(doc, ids)` folds several unpacks into one patch. `unpackableNodes(doc)` lists every candidate.
 
-Where it runs: `@skillgraph/ai` appends the unpack ops to every proposal it validates (`toProposalPatch(doc, patch, { unpack })`: interview and from-transcript dissolve raw markdown, procedural references and embedded sub-steps; copilot, critique and the decompile fallback dissolve raw markdown and embedded sub-steps but keep references); the editor's inspector offers "Unpack into nodes" on any unpackable node and the Import panel unpacks leftover raw markdown without a model; the MCP server exposes it as `graph_unpack`; `graph/procedure-in-markdown` flags what is left.
+Where it runs: `@skillgraph/ai` appends the unpack ops to every proposal it validates (`toProposalPatch(doc, patch, { unpack })`: interview and from-transcript dissolve raw markdown, procedural references and embedded sub-steps; copilot, critique and the decompile fallback dissolve raw markdown and embedded sub-steps but keep references); the editor's inspector offers "Unpack into nodes" on any unpackable node and the Import panel unpacks leftover raw markdown without a model; the MCP server exposes it as `graph_unpack`; `graph/procedure-in-markdown` flags what is left. A failed unpack inside `toProposalPatch` falls back to the plain validated patch rather than rejecting the model's turn, and both editor entry points report a rejected patch inline instead of replacing the editor with an error page.

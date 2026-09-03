@@ -228,7 +228,13 @@ export function unpackProposal(
   return { ops: [...patch.ops, ...unpackNodes(applied, ids).ops] };
 }
 
-/** normalizeAiPatch + validateProposal (+ unpackProposal when asked) in one step. */
+/**
+ * normalizeAiPatch + validateProposal (+ unpackProposal when asked) in one step.
+ *
+ * Unpacking is an improvement, not a requirement, so a failure there falls back to the plain
+ * validated patch: a blob on the canvas beats rejecting the model's whole turn. The
+ * `graph/procedure-in-markdown` lint still flags it and the editor still offers to unpack it.
+ */
 export function toProposalPatch(
   doc: SkillDoc,
   patch: AiPatch,
@@ -236,5 +242,9 @@ export function toProposalPatch(
 ): GraphPatchT {
   const validated = validateProposal(doc, normalizeAiPatch(doc, patch));
   if (!opts.unpack || opts.unpack.length === 0) return validated;
-  return validateProposal(doc, unpackProposal(doc, validated, opts.unpack));
+  try {
+    return validateProposal(doc, unpackProposal(doc, validated, opts.unpack));
+  } catch {
+    return validated;
+  }
 }

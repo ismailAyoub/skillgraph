@@ -309,6 +309,8 @@ function convertBlocks(blocks: RootContent[], opts: ConvertOptions): Converted {
         ...base('step', frame),
         kind: 'step',
         instruction: lead !== undefined ? inlineToMarkdown(rest) : md,
+        // It was a paragraph, so it renders as one: a phase may mix prose and a numbered list.
+        prose: true,
       };
       if (lead) node.title = lead;
       emit(node, frame);
@@ -353,17 +355,20 @@ function mdBlocksInline(text: string) {
   return first && first.type === 'paragraph' ? first.children : [];
 }
 
-/** Move every sibling at `order >= from` (except `exclude`) up by `by`, last first. */
+/**
+ * Move every sibling at `order >= from` up by `by`, last first. `skip` must list the nodes the
+ * same patch removes: moving an already-removed node throws in `applyPatch`.
+ */
 function shiftOps(
   doc: SkillDoc,
   parentId: string | null,
   from: number,
   by: number,
-  exclude: string,
+  skip: readonly (string | undefined)[],
 ): PatchOpT[] {
   if (by <= 0) return [];
   return siblingsOf(doc, parentId)
-    .filter((n) => n.id !== exclude && n.order >= from)
+    .filter((n) => !skip.includes(n.id) && n.order >= from)
     .sort((a, b) => b.order - a.order)
     .map((n) => ({ op: 'move', id: n.id, parentId, order: n.order + by }));
 }
@@ -421,7 +426,8 @@ function looseNeighbours(
   const flow = siblingsOf(doc, parentId)
     .filter((n) => n.id !== exclude && isFlow(n))
     .sort((a, b) => a.order - b.order);
-  const prev = [...flow].reverse().find((n) => n.order <= order);
+  // A decision reaches its successors through `branch` edges, so it never gets a `next` edge.
+  const prev = [...flow].reverse().find((n) => n.order <= order && n.kind !== 'decision');
   const next = flow.find((n) => n.order > order);
   return {
     before: prev && flowEdges(doc, prev.id).outgoing.length === 0 ? prev.id : null,
@@ -430,19 +436,29 @@ function looseNeighbours(
 }
 
 /**
- * Prose paragraphs become steps; inside a phase that has no list steps yet, switch the phase to
- * `stepStyle: prose` so those steps compile back to paragraphs and the SKILL.md text is unchanged.
+ * Edges that `remove` would silently drop, re-pointed at the run's first flow node: the files the
+ * node read or ran, the guardrails and examples attached to it, and the decision branch that
+ * reached it. Without this, unpacking a step orphans its reference and detaches its guardrails.
+ * Incoming `reads`/`runs` are deliberately not carried: those name the node as a file, and the
+ * reference case dissolves that file on purpose.
  */
-function proseStyleOps(doc: SkillDoc, node: SkillNode, blocks: RootContent[]): PatchOpT[] {
-  const parent = node.parentId ? doc.nodes.find((n) => n.id === node.parentId) : undefined;
-  if (parent?.kind !== 'phase') return [];
-  if ((parent as PhaseNodeT).stepStyle === 'prose') return [];
-  const prose = blocks.length > 0 && blocks.every((b) => b.type !== 'list' && b.type !== 'heading');
-  if (!prose) return [];
-  const hasSteps = doc.nodes.some(
-    (n) => n.parentId === parent.id && n.id !== node.id && n.kind === 'step',
-  );
-  return hasSteps ? [] : [{ op: 'update', id: parent.id, data: { stepStyle: 'prose' } }];
+function carriedEdgeOps(
+  doc: SkillDoc,
+  node: SkillNode,
+  run: SkillNode[],
+  id: (kind: string) => string,
+): PatchOpT[] {
+  const anchor = run.find(isFlow);
+  if (!anchor) return [];
+  const ops: PatchOpT[] = [];
+  for (const e of doc.edges) {
+    if (e.source === node.id && (e.kind === 'reads' || e.kind === 'runs')) {
+      ops.push({ op: 'addEdge', edge: { ...e, id: id('edge'), source: anchor.id } });
+    } else if (e.target === node.id && (e.kind === 'attaches' || e.kind === 'branch')) {
+      ops.push({ op: 'addEdge', edge: { ...e, id: id('edge'), target: anchor.id } });
+    }
+  }
+  return ops;
 }
 
 /** Replace `node` in place: its slot and its flow edges go to the converted nodes. */
@@ -464,26 +480,32 @@ function replaceInPlace(
   const { incoming, outgoing } = flowEdges(doc, node.id);
   const loose = looseNeighbours(doc, parentId, node.order, node.id);
   const chain = containerHasFlow(doc, parentId);
+  const carried = carriedEdgeOps(doc, node, run, id);
+  // A carried branch edge already reaches the run; a second `next` edge into it would duplicate.
+  const branchIn = carried.some((op) => op.op === 'addEdge' && op.edge.kind === 'branch');
+  const before = incoming[0]?.source ?? (branchIn ? null : loose.before);
   const ops: PatchOpT[] = [
     { op: 'remove', id: node.id },
-    ...proseStyleOps(doc, node, blocks),
-    ...shiftOps(doc, parentId, node.order, run.length - 1, node.id),
+    ...shiftOps(doc, parentId, node.order, run.length - 1, [node.id]),
     ...nodes.map((n): PatchOpT => ({ op: 'add', node: n })),
     ...edges.map((e): PatchOpT => ({ op: 'addEdge', edge: e })),
-    ...(chain
-      ? chainOps(run, incoming[0]?.source ?? loose.before, outgoing[0]?.target ?? loose.after, id)
-      : []),
+    ...carried,
+    ...(chain ? chainOps(run, before, outgoing[0]?.target ?? loose.after, id) : []),
   ];
   return { ops };
 }
 
-/** Insert the converted nodes right after `host` in its container. */
+/**
+ * Insert the converted nodes right after `host` in its container. `removedId` is the node the
+ * same patch deletes, so it is never handed a `move` op it cannot apply.
+ */
 function insertAfter(
   doc: SkillDoc,
   host: SkillNode,
   blocks: RootContent[],
   provenance: SkillNode['provenance'],
   id: (kind: string) => string,
+  removedId?: string,
 ): { ops: PatchOpT[]; run: SkillNode[] } {
   const parentId = host.parentId ?? null;
   const { nodes, edges } = convertBlocks(blocks, {
@@ -497,7 +519,7 @@ function insertAfter(
   const { outgoing } = flowEdges(doc, host.id);
   const chain = containerHasFlow(doc, parentId);
   const ops: PatchOpT[] = [
-    ...shiftOps(doc, parentId, host.order + 1, run.length, host.id),
+    ...shiftOps(doc, parentId, host.order + 1, run.length, [host.id, removedId]),
     ...nodes.map((n): PatchOpT => ({ op: 'add', node: n })),
     ...edges.map((e): PatchOpT => ({ op: 'addEdge', edge: e })),
   ];
@@ -544,7 +566,7 @@ function unpackReference(
   const reads = doc.edges.find((e) => e.kind === 'reads' && e.target === node.id);
   const host = reads ? doc.nodes.find((n) => n.id === reads.source) : undefined;
   if (host && isFlow(host)) {
-    const { ops } = insertAfter(doc, host, blocks, node.provenance, id);
+    const { ops } = insertAfter(doc, host, blocks, node.provenance, id, node.id);
     return { ops: [{ op: 'remove', id: node.id }, ...ops] };
   }
   // No step reads it: the procedure becomes a root phase of its own.

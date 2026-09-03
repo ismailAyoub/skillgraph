@@ -51,7 +51,8 @@ as \`Do not use for a, b.\`), \`license\`, \`compatibility\`, \`metadata\`, \`al
 ### step (list item)
 \`instruction\` (markdown; the title is prepended in bold, so write it as the continuation:
 title \`Read the diff\` + instruction \`with \\\`gh pr diff\\\`.\`), \`why\` (trailing rationale sentence),
-\`detail[]\` (nested bullets), \`tools[]\` + \`mentionTools\` (appends \`Use X, Y.\`).
+\`detail[]\` (nested bullets), \`tools[]\` + \`mentionTools\` (appends \`Use X, Y.\`), \`prose\` (render as
+paragraphs instead of a list item, so one phase can hold prose and a numbered list).
 
 ### decision (block)
 \`question\`, \`intro\`. Needs two or more outgoing \`branch\` edges; each branch's chain of \`next\`
