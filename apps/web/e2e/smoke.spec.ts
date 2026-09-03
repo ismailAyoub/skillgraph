@@ -3,14 +3,45 @@ import { expect, test } from '@playwright/test';
 
 const FIXTURE = resolve(__dirname, '../../../fixtures/web-design-guidelines/SKILL.md');
 
-// A developer's own `skillgraph dev` bridge on 127.0.0.1:4321 would make AI "connected" and change
-// what the tests see, so point the app at a dead port for the whole suite.
+// A developer's own `skillgraph dev` bridge on 127.0.0.1:4321, or a logged-in `claude` next to the
+// dev server, would make AI "connected" and change what the tests see. Point the app at a dead
+// bridge port and answer the local status probe with "no relay" for the whole suite; a test that
+// wants a particular Claude Code state registers its own route (later routes win).
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     if (!localStorage.getItem('skillgraph:bridgeUrl'))
       localStorage.setItem('skillgraph:bridgeUrl', 'http://127.0.0.1:1');
   });
+  await page.route('**/api/ai/status', (route) =>
+    route.fulfill({ json: { ok: true, local: false, ai: null, claude: null } }),
+  );
 });
+
+/** What `/api/ai/status` reports when `claude` is installed next to the server but logged out. */
+const CLAUDE_LOGGED_OUT = {
+  ok: true,
+  local: true,
+  ai: null,
+  claude: {
+    bin: '/usr/local/bin/claude',
+    loggedIn: false,
+    method: null,
+    subscription: null,
+    account: null,
+  },
+};
+const CLAUDE_LOGGED_IN = {
+  ok: true,
+  local: true,
+  ai: 'claude-cli',
+  claude: {
+    bin: '/usr/local/bin/claude',
+    loggedIn: true,
+    method: 'claude.ai',
+    subscription: 'max',
+    account: 'me@example.com',
+  },
+};
 
 test('create a skill from a template, edit it, and see the compiled preview', async ({ page }) => {
   await page.goto('/app');
@@ -85,6 +116,36 @@ test('the AI panel says AI is not connected and offers Connect AI when nothing i
   await expect(page.getByRole('dialog', { name: 'Connect AI' })).toBeVisible();
   await expect(page.getByTestId('ai-choice-bridge')).toContainText('Claude subscription');
   await expect(page.getByTestId('ai-choice-api')).toContainText('API key');
+});
+
+test('the subscription path names the next step (log in), then flips to connected', async ({
+  page,
+}) => {
+  await page.route('**/api/ai/status', (route) => route.fulfill({ json: CLAUDE_LOGGED_OUT }));
+  await page.goto('/app');
+  // Header and chat card both say what is missing, not a generic "Connect AI".
+  await expect(page.getByTestId('ai-status')).toContainText('Log in to Claude Code');
+  await expect(page.getByTestId('ai-start-connect')).toContainText('Log in to Claude Code first');
+  await page.getByTestId('ai-status').click();
+  const dialog = page.getByRole('dialog', { name: 'Connect AI' });
+  const choice = dialog.getByTestId('ai-choice-bridge');
+  await expect(choice).toContainText('not logged in');
+  await expect(choice.getByTestId('ai-step-relay')).toHaveAttribute('data-state', 'done');
+  await expect(choice.getByTestId('ai-step-install')).toHaveAttribute('data-state', 'done');
+  await expect(choice.getByTestId('ai-step-login')).toHaveAttribute('data-state', 'current');
+  await expect(choice.getByTestId('ai-step-login')).toContainText('claude auth login');
+  await expect(choice.getByTestId('ai-step-login')).toContainText('Paste code here');
+
+  // The user logs in from a terminal; the next probe updates the dialog without a reload.
+  await page.route('**/api/ai/status', (route) => route.fulfill({ json: CLAUDE_LOGGED_IN }));
+  await page.evaluate(() => window.dispatchEvent(new Event('skillgraph:settings')));
+  await expect(choice).toContainText('connected');
+  await expect(choice.getByTestId('ai-step-login')).toHaveAttribute('data-state', 'done');
+  await expect(choice.getByTestId('ai-step-login')).toContainText('me@example.com');
+  await expect(choice.getByTestId('ai-step-login')).toContainText('max');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByTestId('ai-status')).toContainText('AI: Claude subscription');
+  await expect(page.getByTestId('ai-start-connect')).toHaveCount(0);
 });
 
 test('Connect AI dialog stores the API key in localStorage', async ({ page }) => {
